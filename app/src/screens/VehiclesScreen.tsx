@@ -14,9 +14,9 @@ import type { Vehicle } from '../types/domain';
 export function VehiclesScreen() {
   const activeVehicle = useAppStore((state) => state.activeVehicle);
   const setActiveVehicle = useAppStore((state) => state.setActiveVehicle);
-  const [make, setMake] = useState('Ford');
-  const [model, setModel] = useState('Focus');
-  const [year, setYear] = useState('2006');
+  const [make, setMake] = useState('');
+  const [model, setModel] = useState('');
+  const [year, setYear] = useState('');
   const [engine, setEngine] = useState('');
   const [plate, setPlate] = useState('');
   const [loading, setLoading] = useState(false);
@@ -68,10 +68,10 @@ export function VehiclesScreen() {
         {activeVehicle ? <VehicleSummary vehicle={activeVehicle} /> : <Text style={styles.muted}>Nenhum veiculo selecionado.</Text>}
       </Panel>
 
-      <Panel subtitle="Base inicial ja vem com Ford Focus 2006 para teste." title="Cadastrar veiculo">
-        <TextField label="Marca" onChangeText={setMake} value={make} />
-        <TextField label="Modelo" onChangeText={setModel} value={model} />
-        <TextField keyboardType="number-pad" label="Ano" onChangeText={setYear} value={year} />
+      <Panel subtitle="Preencha manualmente ou use Identificar veiculo no Dashboard para tentar ler o VIN/chassi pela ECU." title="Cadastrar veiculo">
+        <TextField label="Marca" onChangeText={setMake} placeholder="ex: Ford" value={make} />
+        <TextField label="Modelo" onChangeText={setModel} placeholder="ex: Focus" value={model} />
+        <TextField keyboardType="number-pad" label="Ano" onChangeText={setYear} placeholder="ex: 2006" value={year} />
         <TextField label="Motor" onChangeText={setEngine} placeholder="ex: 1.6, 2.0" value={engine} />
         <TextField autoCapitalize="characters" label="Placa" onChangeText={setPlate} value={plate} />
         <AppButton disabled={loading} onPress={saveVehicle}>Salvar e selecionar</AppButton>

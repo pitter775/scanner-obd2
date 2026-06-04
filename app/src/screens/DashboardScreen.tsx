@@ -171,7 +171,7 @@ export function DashboardScreen() {
 
   return (
     <Screen>
-      <VehicleHero vehicle={activeVehicle ?? defaultVehicle} />
+      <VehicleHero vehicle={activeVehicle} />
       <Panel title="Leitura em tempo real">
         <ConnectionGauge active={loading} label={loadingLabel} moduleName={activeAdapter?.name ?? 'OBDII'} />
         {statusMessage ? <Text style={styles.statusMessage}>{statusMessage}</Text> : null}
@@ -232,9 +232,10 @@ function ReadingCard({ reading }: { reading: ObdReading }) {
   );
 }
 
-function VehicleHero({ vehicle }: { vehicle: Vehicle }) {
-  const title = `${vehicle.make} ${vehicle.model} ${vehicle.year}`;
-  const imageUrl = `https://tse1.mm.bing.net/th?q=${encodeURIComponent(`${title} car side view`)}`;
+function VehicleHero({ vehicle }: { vehicle?: Vehicle }) {
+  const title = vehicle ? `${vehicle.make} ${vehicle.model} ${vehicle.year}` : 'Veiculo nao identificado';
+  const query = vehicle ? `${title} car side view` : 'car dashboard obd2 scanner';
+  const imageUrl = `https://tse1.mm.bing.net/th?q=${encodeURIComponent(query)}`;
 
   return (
     <View style={styles.hero}>
@@ -353,11 +354,11 @@ const confidenceLabel: Record<VehicleFingerprint['confidence'], string> = {
 };
 
 const defaultVehicle: Vehicle = {
-  id: 'local-focus-2006',
-  make: 'Ford',
-  model: 'Focus',
+  id: 'local-unknown-vehicle',
+  make: 'Veiculo',
+  model: 'nao identificado',
   user_id: 'local',
-  year: 2006,
+  year: new Date().getFullYear(),
 };
 
 function ensureVehicle(activeVehicle: Vehicle | undefined, setActiveVehicle: (vehicle: Vehicle) => void) {

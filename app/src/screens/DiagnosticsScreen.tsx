@@ -107,11 +107,11 @@ export function DiagnosticsScreen() {
 }
 
 const defaultVehicle = {
-  id: 'local-focus-2006',
-  make: 'Ford',
-  model: 'Focus',
+  id: 'local-unknown-vehicle',
+  make: 'Veiculo',
+  model: 'nao identificado',
   user_id: 'local',
-  year: 2006,
+  year: new Date().getFullYear(),
 };
 
 function DtcCard({ dtc }: { dtc: DtcCode }) {

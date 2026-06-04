@@ -527,6 +527,7 @@ Pagamento pode ser analisado depois com Mercado Pago, Stripe ou assinatura pela 
 - Tela Bluetooth ganhou busca de dispositivos proximos, pareamento pelo app, conexao rapida com ultimo scanner e textos mais praticos.
 - Navegacao inferior com icones adicionada nas telas principais.
 - Dashboard passou a exibir imagem temporaria do carro por URL de busca Bing sem salvar no banco.
+- Ford Focus 2006 removido como veiculo padrao; app agora inicia como veiculo nao identificado para testes reais.
 - Historico agora consulta sessoes reais no Supabase.
 - APK release local gerado em `C:\Projetos\scanner-obd2-mobile\scanner-obd2-release.apk`; APK debug antigo removido.
 - Node portatil `v20.20.2` e Android SDK local instalados em `.tools/` para viabilizar build local.
@@ -535,11 +536,13 @@ Pagamento pode ser analisado depois com Mercado Pago, Stripe ou assinatura pela 
 - `npx eas-cli --version` funcionou e retornou `eas-cli/20.0.0`.
 - Ponto de atencao: Node global ainda pode estar em `v20.11.1`; para build local foi usado Node portatil `v20.20.2` em `.tools/`.
 - Ponto de atencao: Bluetooth classico so deve ser validado em Android real com build nativo/dev client, nao no Expo Go.
-- Nao foi feito push.
+- Estado atual: push feito conforme pedido do usuario, com APK release atualizado na raiz.
 
 ## Proximo passo recomendado
 
-- Instalar o APK em um Android real.
-- Parear o SP359 nas configuracoes do Android.
-- Gerar novo APK e validar conexao, comandos OBD2, parser com respostas reais do Focus 2006 e RLS no Supabase real.
+- Instalar o APK atualizado em um Android real.
+- Usar a tela Bluetooth para buscar/parear `OBDII` ou usar conexao rapida com ultimo scanner.
+- Validar VIN/chassi parseado, DTCs, imagem do carro, realtime sem intervalo fixo e relatorio bruto.
+- Melhorar visual premium preto/neon com animacoes mais ricas em botoes, cards e graficos.
+- Depois de concluir o basico local, reativar historico/Supabase com RLS real.
 - Nao fazer push sem pedido explicito do usuario.

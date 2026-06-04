@@ -26,22 +26,22 @@
 - Estado local: Zustand em `app/src/store/appStore.ts`.
 - Banco: Supabase, mas a sincronizacao em nuvem esta desativada no APK de teste em `app/src/config/env.ts` para evitar bloqueio por login/sessao enquanto valida o scanner no carro.
 - Login esta simplificado para modo teste, sem confirmacao de email no momento.
-- Veiculo local padrao: Ford Focus 2006, para nao bloquear o primeiro teste.
-- Adaptador alvo atual: SP359/OBD2 Bluetooth classico. Ainda existem referencias tecnicas a ELM327 porque o protocolo/comandos sao de adaptadores ELM327.
-- Fluxo atual obrigatorio: Login/permissoes -> Bluetooth -> Home -> Dashboard/DTC/Debug.
-- O app so libera as telas principais depois que o SP359 passa no handshake inicial.
+- Nao manter Ford Focus 2006 como padrao automatico; app deve iniciar como veiculo nao identificado e tentar identificar por VIN/chassi via OBD2.
+- Adaptador validado em carro real: `OBDII (00:10:CC:4F:36:03)` via Bluetooth classico/SPP, respondendo como ELM327 v1.5. O `SP359` anterior apareceu com perfil de audio e nao funcionou.
+- Fluxo atual: Login/permissoes -> Bluetooth -> Home -> Dashboard/DTC/Debug, com menu inferior nas telas principais.
+- O app libera as telas principais depois que um adaptador OBDII/ELM passa no handshake inicial.
 
 ## Estrutura principal
 
 - `app/src/screens/`: telas do app.
 - `app/src/screens/LoginScreen.tsx`: entrada, modo teste e preparo das permissoes.
-- `app/src/screens/BluetoothScreen.tsx`: lista pareados, prioriza SP359/OBD2 e valida conexao.
+- `app/src/screens/BluetoothScreen.tsx`: busca dispositivos proximos, pareia, lista pareados, salva ultimo scanner funcional e valida conexao.
 - `app/src/screens/HomeScreen.tsx`: menu principal bloqueado ate conexao OBD2 validada.
-- `app/src/screens/DashboardScreen.tsx`: leitura manual, leitura continua, identificacao do veiculo e log OBD2.
+- `app/src/screens/DashboardScreen.tsx`: realtime sem intervalo fixo, leitura manual, identificacao do veiculo, imagem temporaria do carro por busca Bing, cards/graficos e log OBD2.
 - `app/src/screens/DiagnosticsScreen.tsx`: leitura e limpeza de DTCs.
 - `app/src/screens/DebugScreen.tsx`: estado tecnico do app, adaptador, leituras, DTCs e log.
-- `app/src/services/bluetoothService.ts`: permissoes, lista de pareados, conexao compartilhada e mensagens de erro Bluetooth.
-- `app/src/services/obdService.ts`: comandos AT/OBD2, leitura de sensores, VIN/fingerprint e DTCs.
+- `app/src/services/bluetoothService.ts`: permissoes, descoberta, pareamento, lista de pareados, conexao compartilhada, estrategias Bluetooth e mensagens de erro.
+- `app/src/services/obdService.ts`: comandos AT/OBD2, leitura realtime, snapshot bruto, VIN/fingerprint e DTCs.
 - `app/src/services/scanRepository.ts`: persistencia Supabase quando nuvem estiver ativa.
 - `app/src/components/ConnectionGauge.tsx`: animacao de conexao/leitura.
 - `supabase/migrations/`: migrations do banco.
@@ -80,12 +80,14 @@
 
 ## Fluxo Bluetooth/OBD2 atual
 
-- O usuario pareia o SP359 nas configuracoes do Android.
-- No app, entra na tela Bluetooth e toca em buscar dispositivos.
-- A lista prioriza nomes com `SP`, `OBD` ou `ELM`.
-- Ao selecionar o SP359, o app abre conexao Bluetooth classica e envia handshake inicial.
+- Preferir o fluxo pelo app: buscar novos -> parear `OBDII` -> conectar. Se o Android nao permitir pareamento pelo app, parear nas configuracoes e voltar.
+- A lista prioriza nomes com `SP`, `OBD` ou `ELM`, mas o adaptador real validado aparece como `OBDII`.
+- Ao selecionar o adaptador, o app abre conexao Bluetooth classica e envia handshake inicial.
 - Se o adaptador responder, `connectionReady` vira `true` no Zustand e o app libera Home/Dashboard/DTC/Debug.
+- O ultimo adaptador que funcionou fica salvo localmente para conexao rapida.
 - Dashboard e DTC usam a conexao compartilhada para evitar reconectar e fechar socket a cada leitura.
+- Realtime do Dashboard nao deve usar intervalo fixo visivel; atualizar cada sensor assim que a ECU responder.
+- Relatorio deve manter respostas OBD2 brutas, logs de TX/RX e eventos para diagnostico.
 - Erros nativos como `read failed`, `socket might closed`, `timeout`, `BLUETOOTH_CONNECT` devem ser traduzidos para portugues antes de aparecer para o usuario.
 - Evitar Alert nativo feio em erros de scanner; preferir mensagem dentro da tela.
 
@@ -100,16 +102,16 @@
 
 ## O que ainda falta validar em Android real
 
-- Conexao real com SP359 no carro.
-- Resposta do handshake com carro ligado/chave ligada.
-- Parser dos PIDs no Focus 2006.
+- Pareamento pelo app em diferentes Androids.
+- Estabilidade da conexao rapida com ultimo adaptador.
+- Parser dos PIDs em outros carros.
 - Comandos DTC `03`, `07`, `0A` e limpeza `04`.
-- VIN/fingerprint quando o carro/adaptador suportar.
+- VIN/fingerprint: Ford retornou VIN multi-frame, parser foi ajustado, ainda precisa revalidar no carro.
 - RLS/Supabase real quando a nuvem for reativada.
 
 ## Direcao de produto
 
-- Visual futuro: premium preto/neon, limpo, animado.
-- Dashboard futuro: velocimetros/graficos melhores para leituras em tempo real.
-- Fluxo de veiculo futuro: tentar VIN via OBD2 primeiro; se nao vier, usar filtro marca -> modelo -> ano/versao.
-- Foto do carro futura: buscar dinamicamente por API/imagens apenas para exibicao no app, sem salvar imagem no banco.
+- Visual alvo: premium preto/neon, limpo, muito animado, com botoes e graficos vivos sem poluir.
+- Dashboard alvo: cards/graficos/velocimetros animados e leitura o mais realtime possivel.
+- Fluxo de veiculo: tentar VIN via OBD2 primeiro; se nao vier, usar filtro marca -> modelo -> ano/versao.
+- Foto do carro: buscar dinamicamente por Bing/Google/API equivalente apenas para exibicao no app, sem salvar imagem no banco.
