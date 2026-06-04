@@ -67,7 +67,15 @@ export function ConnectionGauge({ active, label, moduleName = 'OBDII' }: Connect
   });
   const outerOpacity = pulse.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.35, 0.85],
+    outputRange: [0.42, 0.95],
+  });
+  const haloScale = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.84, 1.18],
+  });
+  const haloOpacity = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.10, 0.35],
   });
   const scanTranslate = scan.interpolate({
     inputRange: [0, 1],
@@ -77,6 +85,7 @@ export function ConnectionGauge({ active, label, moduleName = 'OBDII' }: Connect
   return (
     <View style={styles.wrapper}>
       <View style={styles.visual}>
+        <Animated.View style={[styles.halo, { opacity: haloOpacity, transform: [{ scale: haloScale }] }]} />
         <Animated.View style={[styles.ring, styles.ringOuter, { opacity: outerOpacity, transform: [{ scale: outerScale }] }]} />
         <View style={[styles.ring, styles.ringInner]} />
         <View style={styles.module}>
@@ -120,10 +129,17 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
   },
+  halo: {
+    backgroundColor: colors.primary,
+    borderRadius: 120,
+    height: 172,
+    position: 'absolute',
+    width: 172,
+  },
   module: {
     alignItems: 'center',
     backgroundColor: colors.background,
-    borderColor: colors.primary,
+    borderColor: colors.primaryGlow,
     borderRadius: 8,
     borderWidth: 2,
     height: 72,
@@ -155,13 +171,13 @@ const styles = StyleSheet.create({
     width: 132,
   },
   ringOuter: {
-    borderColor: colors.primary,
+    borderColor: colors.primaryGlow,
     borderWidth: 2,
     height: 162,
     width: 162,
   },
   scanLine: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primaryGlow,
     height: 96,
     opacity: 0.18,
     position: 'absolute',

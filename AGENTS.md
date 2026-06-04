@@ -112,6 +112,7 @@
 ## Direcao de produto
 
 - Visual alvo: premium preto/neon, limpo, muito animado, com botoes e graficos vivos sem poluir.
-- Dashboard alvo: cards/graficos/velocimetros animados e leitura o mais realtime possivel.
+- Dashboard alvo: cards/graficos/velocimetros animados, neon forte e leitura o mais realtime possivel.
+- O app deve suportar celular em retrato e Android/tablet do carro em paisagem.
 - Fluxo de veiculo: tentar VIN via OBD2 primeiro; se nao vier, usar filtro marca -> modelo -> ano/versao.
 - Foto do carro: buscar dinamicamente por Bing/Google/API equivalente apenas para exibicao no app, sem salvar imagem no banco.

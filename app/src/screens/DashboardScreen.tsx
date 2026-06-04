@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Image, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { AppButton } from '../components/AppButton';
 import { ConnectionGauge } from '../components/ConnectionGauge';
 import { Panel } from '../components/Panel';
 import { Screen } from '../components/Screen';
-import { colors, spacing } from '../config/theme';
 import { isCloudSyncEnabled } from '../config/env';
+import { colors, spacing } from '../config/theme';
 import { getSharedConnection, obdBluetoothErrorMessage, type BluetoothConnection } from '../services/bluetoothService';
 import { recordDiagnosticEvent } from '../services/diagnosticLog';
 import { ObdService } from '../services/obdService';
@@ -15,6 +15,8 @@ import { useAppStore } from '../store/appStore';
 import type { ObdReading, Vehicle, VehicleFingerprint } from '../types/domain';
 
 export function DashboardScreen() {
+  const { width } = useWindowDimensions();
+  const isWide = width >= 760;
   const activeVehicle = useAppStore((state) => state.activeVehicle);
   const activeAdapter = useAppStore((state) => state.activeAdapter);
   const appendCommunicationLog = useAppStore((state) => state.appendCommunicationLog);
@@ -171,23 +173,31 @@ export function DashboardScreen() {
 
   return (
     <Screen>
-      <VehicleHero vehicle={activeVehicle} />
-      <Panel title="Leitura em tempo real">
-        <ConnectionGauge active={loading} label={loadingLabel} moduleName={activeAdapter?.name ?? 'OBDII'} />
-        {statusMessage ? <Text style={styles.statusMessage}>{statusMessage}</Text> : null}
-        <AppButton disabled={loading} icon="●" onPress={startDiagnostic}>Ler sensores agora</AppButton>
-        <AppButton disabled={loading && !liveRunning} icon={liveRunning ? '■' : '▶'} onPress={liveRunning ? stopLiveDiagnostic : startLiveDiagnostic} tone={liveRunning ? 'danger' : 'secondary'}>
-          {liveRunning ? 'Parar realtime' : 'Iniciar realtime'}
-        </AppButton>
-        <AppButton disabled={loading} icon="⌕" onPress={identifyVehicle} tone="secondary">Identificar veiculo</AppButton>
-        <AppButton disabled={loading} icon={showOptions ? '-' : '+'} onPress={() => setShowOptions((value) => !value)} tone="secondary">Opcoes</AppButton>
-        {showOptions ? <Text style={styles.muted}>Realtime sem intervalo fixo: cada sensor atualiza assim que a ECU responde.</Text> : null}
-      </Panel>
+      <View style={[styles.topLayout, isWide && styles.topLayoutWide]}>
+        <View style={isWide ? styles.topColumnWide : undefined}>
+          <VehicleHero vehicle={activeVehicle} />
+        </View>
+        <View style={isWide ? styles.topColumnWide : undefined}>
+          <Panel title="Leitura em tempo real">
+            <ConnectionGauge active={loading} label={loadingLabel} moduleName={activeAdapter?.name ?? 'OBDII'} />
+            {statusMessage ? <Text style={styles.statusMessage}>{statusMessage}</Text> : null}
+            <View style={[styles.actionGrid, isWide && styles.actionGridWide]}>
+              <AppButton disabled={loading} icon="*" onPress={startDiagnostic}>Ler agora</AppButton>
+              <AppButton disabled={loading && !liveRunning} icon={liveRunning ? '[]' : '>'} onPress={liveRunning ? stopLiveDiagnostic : startLiveDiagnostic} tone={liveRunning ? 'danger' : 'secondary'}>
+                {liveRunning ? 'Parar realtime' : 'Realtime'}
+              </AppButton>
+              <AppButton disabled={loading} icon="VIN" onPress={identifyVehicle} tone="secondary">Identificar</AppButton>
+              <AppButton disabled={loading} icon={showOptions ? '-' : '+'} onPress={() => setShowOptions((value) => !value)} tone="secondary">Opcoes</AppButton>
+            </View>
+            {showOptions ? <Text style={styles.muted}>Realtime sem intervalo fixo: cada sensor atualiza assim que a ECU responde. Layout adapta para tablet horizontal.</Text> : null}
+          </Panel>
+        </View>
+      </View>
 
       {fingerprint ? <FingerprintPanel fingerprint={fingerprint} /> : null}
 
       <View style={styles.grid}>
-        {readings.length ? readings.map((reading) => <ReadingCard key={reading.pid} reading={reading} />) : (
+        {readings.length ? readings.map((reading) => <ReadingCard key={reading.pid} compact={isWide} reading={reading} />) : (
           <Text style={styles.muted}>Nenhuma leitura realizada nesta sessao.</Text>
         )}
       </View>
@@ -219,16 +229,70 @@ function FingerprintPanel({ fingerprint }: { fingerprint: VehicleFingerprint }) 
   );
 }
 
-function ReadingCard({ reading }: { reading: ObdReading }) {
+function ReadingCard({ compact, reading }: { compact: boolean; reading: ObdReading }) {
+  const pulse = useRef(new Animated.Value(0)).current;
+  const valueScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          duration: 900,
+          easing: Easing.inOut(Easing.quad),
+          toValue: 1,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          duration: 900,
+          easing: Easing.inOut(Easing.quad),
+          toValue: 0,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.spring(valueScale, {
+        friction: 5,
+        tension: 160,
+        toValue: 1.06,
+        useNativeDriver: true,
+      }),
+      Animated.spring(valueScale, {
+        friction: 6,
+        tension: 120,
+        toValue: 1,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [reading.value, valueScale]);
+
+  const haloOpacity = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.08, 0.30],
+  });
+  const barWidth = `${readingPercent(reading)}%` as const;
+
   return (
-    <View style={styles.card}>
+    <Animated.View style={[styles.card, compact ? styles.cardWide : styles.cardPhone]}>
+      <Animated.View pointerEvents="none" style={[styles.cardHalo, { opacity: haloOpacity }]} />
       <Text style={styles.cardLabel}>{reading.name}</Text>
-      <Text style={styles.cardValue}>{reading.value}</Text>
+      <Animated.Text style={[styles.cardValue, { transform: [{ scale: valueScale }] }]}>{reading.value}</Animated.Text>
       <Text style={styles.cardUnit}>{reading.unit}</Text>
       <View style={styles.track}>
-        <View style={[styles.fill, { width: `${readingPercent(reading)}%` }]} />
+        <View style={[styles.fillGlow, { width: barWidth }]} />
+        <View style={[styles.fill, { width: barWidth }]} />
       </View>
-    </View>
+      <View style={styles.segmentRow}>
+        {Array.from({ length: 8 }).map((_, index) => (
+          <View key={index} style={[styles.segment, readingPercent(reading) >= (index + 1) * 12 ? styles.segmentActive : null]} />
+        ))}
+      </View>
+    </Animated.View>
   );
 }
 
@@ -240,6 +304,7 @@ function VehicleHero({ vehicle }: { vehicle?: Vehicle }) {
   return (
     <View style={styles.hero}>
       <Image source={{ uri: imageUrl }} style={styles.heroImage} />
+      <View style={styles.heroGlow} />
       <View style={styles.heroOverlay}>
         <Text style={styles.heroTitle}>{title}</Text>
         <Text style={styles.heroSubtitle}>Imagem temporaria por busca web</Text>
@@ -249,35 +314,74 @@ function VehicleHero({ vehicle }: { vehicle?: Vehicle }) {
 }
 
 const styles = StyleSheet.create({
+  actionGrid: {
+    gap: spacing.sm,
+  },
+  actionGridWide: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
   card: {
     backgroundColor: colors.panel,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     borderRadius: 8,
     borderWidth: 1,
-    flexBasis: '48%',
-    minHeight: 128,
+    minHeight: 142,
+    overflow: 'hidden',
     padding: spacing.md,
+    shadowColor: colors.primaryGlow,
+    shadowOffset: { height: 0, width: 0 },
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  cardHalo: {
+    backgroundColor: colors.primary,
+    borderRadius: 80,
+    height: 96,
+    position: 'absolute',
+    right: -38,
+    top: -34,
+    width: 96,
   },
   cardLabel: {
     color: colors.muted,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
+  },
+  cardPhone: {
+    flexBasis: '48%',
   },
   cardUnit: {
-    color: colors.primary,
+    color: colors.primaryGlow,
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '900',
   },
   cardValue: {
     color: colors.text,
     fontSize: 30,
     fontWeight: '900',
     marginVertical: spacing.xs,
+    textShadowColor: colors.primaryGlow,
+    textShadowOffset: { height: 0, width: 0 },
+    textShadowRadius: 12,
+  },
+  cardWide: {
+    flexBasis: '23.5%',
   },
   fill: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primaryGlow,
     borderRadius: 999,
-    height: 6,
+    height: 7,
+    position: 'absolute',
+  },
+  fillGlow: {
+    backgroundColor: colors.electric,
+    borderRadius: 999,
+    height: 13,
+    opacity: 0.32,
+    position: 'absolute',
+    top: -3,
   },
   fingerprintMain: {
     color: colors.text,
@@ -292,17 +396,31 @@ const styles = StyleSheet.create({
   hero: {
     aspectRatio: 16 / 9,
     backgroundColor: colors.panel,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     borderRadius: 8,
     borderWidth: 1,
     overflow: 'hidden',
+    shadowColor: colors.electric,
+    shadowOffset: { height: 0, width: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    elevation: 4,
+  },
+  heroGlow: {
+    backgroundColor: colors.primary,
+    bottom: -90,
+    height: 150,
+    left: -40,
+    opacity: 0.22,
+    position: 'absolute',
+    right: -40,
   },
   heroImage: {
     height: '100%',
     width: '100%',
   },
   heroOverlay: {
-    backgroundColor: 'rgba(11,18,32,0.70)',
+    backgroundColor: 'rgba(11,18,32,0.68)',
     bottom: 0,
     left: 0,
     padding: spacing.md,
@@ -312,12 +430,15 @@ const styles = StyleSheet.create({
   heroSubtitle: {
     color: colors.muted,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   heroTitle: {
     color: colors.text,
     fontSize: 22,
     fontWeight: '900',
+    textShadowColor: colors.primaryGlow,
+    textShadowOffset: { height: 0, width: 0 },
+    textShadowRadius: 10,
   },
   logLine: {
     color: colors.muted,
@@ -327,9 +448,23 @@ const styles = StyleSheet.create({
   muted: {
     color: colors.muted,
   },
+  segment: {
+    backgroundColor: colors.border,
+    borderRadius: 2,
+    flex: 1,
+    height: 4,
+  },
+  segmentActive: {
+    backgroundColor: colors.primaryGlow,
+  },
+  segmentRow: {
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: spacing.sm,
+  },
   statusMessage: {
     backgroundColor: colors.panelSoft,
-    borderColor: colors.border,
+    borderColor: colors.warning,
     borderRadius: 8,
     borderWidth: 1,
     color: colors.warning,
@@ -337,12 +472,22 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     padding: spacing.md,
   },
+  topColumnWide: {
+    flex: 1,
+  },
+  topLayout: {
+    gap: spacing.md,
+  },
+  topLayoutWide: {
+    alignItems: 'stretch',
+    flexDirection: 'row',
+  },
   track: {
     backgroundColor: colors.panelSoft,
     borderRadius: 999,
-    height: 6,
+    height: 7,
     marginTop: spacing.sm,
-    overflow: 'hidden',
+    overflow: 'visible',
   },
 });
 

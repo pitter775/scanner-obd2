@@ -35,11 +35,11 @@ export function Screen({ children, scroll = true }: ScreenProps) {
 
 function BottomNav({ activeRoute, navigate }: { activeRoute: string; navigate: (name: string) => void }) {
   const items = [
-    ['Home', '⌂', 'Inicio'],
-    ['Bluetooth', '⛓', 'BT'],
-    ['Dashboard', '◉', 'Dash'],
+    ['Home', 'H', 'Inicio'],
+    ['Bluetooth', 'B', 'BT'],
+    ['Dashboard', 'D', 'Dash'],
     ['Diagnostics', '!', 'DTC'],
-    ['Vehicles', '▣', 'Carro'],
+    ['Vehicles', 'C', 'Carro'],
     ['Debug', 'i', 'Debug'],
   ];
 
@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
   },
   bottomNav: {
     backgroundColor: colors.background,
-    borderTopColor: colors.border,
+    borderTopColor: colors.borderStrong,
     borderTopWidth: 1,
     bottom: 0,
     flexDirection: 'row',

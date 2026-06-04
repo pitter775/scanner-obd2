@@ -477,9 +477,9 @@ Pagamento pode ser analisado depois com Mercado Pago, Stripe ou assinatura pela 
 ### Fase 6 - Produto
 
 - [x] Criar UI inicial mobile.
-- [ ] Melhorar UI depois de testar no celular.
-- [ ] Redesenhar visual premium preto/neon, limpo e animado.
-- [ ] Criar dashboard com graficos em formato velocimetro para leitura em tempo real.
+- [x] Melhorar UI depois de testar no celular.
+- [x] Redesenhar visual premium preto/neon, limpo e animado.
+- [x] Criar dashboard com graficos animados para leitura em tempo real.
 - [ ] Criar filtro guiado de veiculo: marca -> modelo -> ano/versao.
 - [ ] Usar VIN via OBD2 para pular filtro manual quando disponivel.
 - [ ] Buscar foto do veiculo dinamicamente via Google Images/Bing Images/API equivalente, sem persistir no banco.
@@ -529,6 +529,10 @@ Pagamento pode ser analisado depois com Mercado Pago, Stripe ou assinatura pela 
 - Dashboard passou a exibir imagem temporaria do carro por URL de busca Bing sem salvar no banco.
 - Ford Focus 2006 removido como veiculo padrao; app agora inicia como veiculo nao identificado para testes reais.
 - Historico agora consulta sessoes reais no Supabase.
+- Visual preto/neon reforcado em botoes, paineis, loader, cards e barras de leitura, com animacoes de pulso/escala.
+- Layout do Dashboard adaptado para Android/tablet de carro na horizontal, com hero e controles lado a lado e mais cards por linha.
+- App liberado para orientacao retrato/paisagem no `app.json`.
+- Parser de VIN/chassi validado localmente contra a resposta real capturada `0902`, retornando `8AFFZZFHA7J004684`.
 - APK release local gerado em `C:\Projetos\scanner-obd2-mobile\scanner-obd2-release.apk`; APK debug antigo removido.
 - Node portatil `v20.20.2` e Android SDK local instalados em `.tools/` para viabilizar build local.
 - Documentacao criada em `README.md`, `supabase/README.md`, `docs/architecture.md`, `docs/roadmap.md` e `docs/obd2/elm327.md`.
@@ -542,7 +546,8 @@ Pagamento pode ser analisado depois com Mercado Pago, Stripe ou assinatura pela 
 
 - Instalar o APK atualizado em um Android real.
 - Usar a tela Bluetooth para buscar/parear `OBDII` ou usar conexao rapida com ultimo scanner.
-- Validar VIN/chassi parseado, DTCs, imagem do carro, realtime sem intervalo fixo e relatorio bruto.
-- Melhorar visual premium preto/neon com animacoes mais ricas em botoes, cards e graficos.
+- Validar no carro se o Dashboard em paisagem fica ergonomico no Android/tablet instalado.
+- Validar VIN/chassi exibido no carro apos instalar esta versao, esperando `8AFFZZFHA7J004684` para a resposta ja capturada.
+- Validar DTCs, imagem do carro, realtime sem intervalo fixo e relatorio bruto.
 - Depois de concluir o basico local, reativar historico/Supabase com RLS real.
 - Nao fazer push sem pedido explicito do usuario.
