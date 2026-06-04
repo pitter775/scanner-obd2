@@ -517,6 +517,7 @@ Pagamento pode ser analisado depois com Mercado Pago, Stripe ou assinatura pela 
 - Conexao ELM327 corrigida para manter o objeto do dispositivo apos `connect()`, usar delimitador `>`, limpar buffer antes de comandos e aguardar respostas lentas de clones.
 - Inicializacao OBD2 ajustada com timeouts maiores para `ATZ`, comandos AT e `0100`.
 - Tela Debug ganhou relatorio compartilhavel com estado do app, erros/avisos capturados, log OBD2, leituras, DTCs, adaptador e veiculo para enviar apos testes no carro.
+- Handshake Bluetooth/ELM agora tenta multiplas estrategias de socket/delimitador (`secure/raw`, `secure/prompt`, `insecure/raw`, `insecure/prompt`) e registra cada comando/resposta no relatorio.
 - Historico agora consulta sessoes reais no Supabase.
 - APK release local gerado em `C:\Projetos\scanner-obd2-mobile\scanner-obd2-release.apk`; APK debug antigo removido.
 - Node portatil `v20.20.2` e Android SDK local instalados em `.tools/` para viabilizar build local.
