@@ -42,3 +42,6 @@ Thumbs.db
 
 # Local build artifacts
 scanner-obd2*.apk
+
+# Generated schema reference
+supabase/Shema.sql
