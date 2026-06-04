@@ -178,6 +178,7 @@ type ElmCommandOptions = {
 
 export async function sendElmCommand(connection: BluetoothConnection, command: string, options: ElmCommandOptions = {}) {
   await connection.clear();
+  recordDiagnosticEvent('info', `RAW TX ${command}`, `strategy=${connection.strategy.label}`);
   await connection.send(command);
 
   if (options.settleMs) {
@@ -192,14 +193,22 @@ async function readElmResponse(connection: BluetoothConnection, timeoutMs: numbe
   let response = '';
   let lastError: unknown;
   let lastDataAt = 0;
+  let lastAvailableLogAt = 0;
 
   while (Date.now() - startedAt < timeoutMs) {
     try {
       const available = await connection.available();
+      const elapsedMs = Date.now() - startedAt;
+
+      if (available > 0 || elapsedMs - lastAvailableLogAt >= 1000) {
+        recordDiagnosticEvent('info', 'RAW available', `strategy=${connection.strategy.label}; bytes=${available}; elapsedMs=${elapsedMs}`);
+        lastAvailableLogAt = elapsedMs;
+      }
 
       if (available > 0) {
         const chunk = await connection.read();
         response += chunk;
+        recordDiagnosticEvent('info', 'RAW RX chunk', `strategy=${connection.strategy.label}; chunk=${formatRaw(chunk)}; total=${formatRaw(response)}`);
         lastDataAt = Date.now();
 
         if (response.includes('>')) {
@@ -218,6 +227,7 @@ async function readElmResponse(connection: BluetoothConnection, timeoutMs: numbe
   }
 
   if (response.trim()) {
+    recordDiagnosticEvent('info', 'RAW RX final', `strategy=${connection.strategy.label}; response=${formatRaw(response)}`);
     return response;
   }
 
@@ -233,6 +243,13 @@ export function normalizeElmResponse(response: string) {
     .map((line) => line.trim())
     .filter(Boolean)
     .join('\n');
+}
+
+export function formatRaw(response: string) {
+  return response
+    .replace(/\r/g, '\\r')
+    .replace(/\n/g, '\\n')
+    .replace(/\t/g, '\\t');
 }
 
 export function obdBluetoothErrorMessage(error: unknown) {
@@ -333,9 +350,11 @@ async function runElmHandshake(connection: BluetoothConnection) {
 
   for (const [command, options] of commands) {
     try {
-      const response = normalizeElmResponse(await sendElmCommand(connection, command, options));
-      responses.push(`${command}: ${response || 'sem resposta'}`);
-      recordDiagnosticEvent('info', `ELM ${command}`, response || 'sem resposta');
+      const rawResponse = await sendElmCommand(connection, command, options);
+      const normalizedResponse = normalizeElmResponse(rawResponse);
+      responses.push(`${command} RAW: ${formatRaw(rawResponse) || 'sem resposta'}`);
+      responses.push(`${command} NORMALIZADO: ${normalizedResponse || 'sem resposta'}`);
+      recordDiagnosticEvent('info', `ELM ${command} RAW`, formatRaw(rawResponse) || 'sem resposta');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error ?? '');
       responses.push(`${command}: ERRO ${message}`);

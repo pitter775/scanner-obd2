@@ -8,7 +8,7 @@ import { Panel } from '../components/Panel';
 import { Screen } from '../components/Screen';
 import { colors, spacing } from '../config/theme';
 import { listPairedDevices, obdBluetoothErrorMessage, testAdapterHandshake } from '../services/bluetoothService';
-import { recordDiagnosticEvent } from '../services/diagnosticLog';
+import { recordDiagnosticEvent, shareDiagnosticReport } from '../services/diagnosticLog';
 import { useAppStore } from '../store/appStore';
 import type { BluetoothDeviceInfo } from '../types/domain';
 import type { RootStackParamList } from '../types/navigation';
@@ -74,6 +74,8 @@ export function BluetoothScreen({ navigation }: Props) {
       <Panel subtitle="Pareie o SP359 nas configuracoes do Android antes de buscar. Depois selecione o SP359 aqui para validar a conexao." title="Dispositivos pareados">
         <ConnectionGauge active={loading} label={connectingDeviceId ? 'Validando resposta do adaptador...' : 'Buscando dispositivos pareados...'} />
         <AppButton disabled={loading} onPress={loadDevices}>Buscar dispositivos</AppButton>
+        <AppButton disabled={loading} onPress={shareDiagnosticReport} tone="secondary">Compartilhar relatorio</AppButton>
+        <AppButton disabled={loading} onPress={() => navigation.navigate('Debug')} tone="secondary">Abrir debug</AppButton>
         {devices.map((device) => (
           <Pressable key={device.id} onPress={() => connectDevice(device)} style={[styles.device, activeAdapter?.id === device.id && styles.selectedDevice]}>
             <View>

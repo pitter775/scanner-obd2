@@ -42,7 +42,7 @@ export const useAppStore = create<AppState>((set) => ({
   })),
   appendDiagnosticEvent: (event) => set((state) => ({
     diagnosticEvents: [
-      ...state.diagnosticEvents.slice(-119),
+      ...state.diagnosticEvents.slice(-499),
       {
         at: event.at ?? new Date().toISOString(),
         id: event.id ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`,
