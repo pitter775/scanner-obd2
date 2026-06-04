@@ -16,6 +16,8 @@ O projeto deve nascer com base tecnica preparada para evoluir para produto comer
 - Banco principal: Supabase.
 - Autenticacao: Supabase Auth.
 - Infra/agent: usar Infrastudio com agente para as etapas de infraestrutura, automacoes, builds e continuacao operacional quando aplicavel.
+- Env unico: usar somente `C:\Projetos\scanner-obd2-mobile\.env` como fonte; o app sincroniza para `app/.env` nos scripts locais.
+- Direcao visual futura: visual premium, preto/neon, limpo, animado, com dashboard em estilo velocimetro.
 - Banco local/cache futuro: SQLite, apenas se necessario para uso offline.
 - Comunicacao com scanner: Bluetooth classico/SPP para ELM327.
 - Dispositivo alvo inicial: ELM327 v1.5 PIC18F25K80 placa dupla.
@@ -311,6 +313,9 @@ Politica padrao:
    - listar veiculos
    - criar/editar veiculo
    - selecionar veiculo ativo
+   - filtro guiado: primeiro marca, depois modelo, depois ano/versao quando necessario
+   - se o VIN vier pelo OBD2 (`0902`), tentar pular o filtro manual e preencher/sugerir automaticamente
+   - foto do carro: buscar dinamicamente em Google Images/Bing Images ou API equivalente, somente para exibir no app, sem gravar imagem no banco
 
 4. Bluetooth
    - listar dispositivos pareados
@@ -324,6 +329,9 @@ Politica padrao:
    - tensao
    - carga do motor
    - borboleta
+   - versao futura premium: gauges/velocimetros animados para leituras principais
+   - fundo preto com detalhes neon, mantendo visual clean e legivel
+   - microanimacoes discretas para estados de conexao, leitura e alerta
 
 6. Codigos de falha
    - ler DTCs
@@ -377,6 +385,12 @@ O APK debug normalmente sai em:
 
 ```text
 android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+No projeto, o script `npm run apk:debug` deve copiar o APK para:
+
+```text
+C:\Projetos\scanner-obd2-mobile\scanner-obd2-debug.apk
 ```
 
 ## Assinaturas futuras
@@ -463,6 +477,11 @@ Pagamento pode ser analisado depois com Mercado Pago, Stripe ou assinatura pela 
 
 - [x] Criar UI inicial mobile.
 - [ ] Melhorar UI depois de testar no celular.
+- [ ] Redesenhar visual premium preto/neon, limpo e animado.
+- [ ] Criar dashboard com graficos em formato velocimetro para leitura em tempo real.
+- [ ] Criar filtro guiado de veiculo: marca -> modelo -> ano/versao.
+- [ ] Usar VIN via OBD2 para pular filtro manual quando disponivel.
+- [ ] Buscar foto do veiculo dinamicamente via Google Images/Bing Images/API equivalente, sem persistir no banco.
 - [ ] Criar relatorios.
 - [ ] Criar limites por plano.
 - [ ] Implementar assinatura.
@@ -473,6 +492,9 @@ Pagamento pode ser analisado depois com Mercado Pago, Stripe ou assinatura pela 
 - Projeto criado em `C:\Projetos\scanner-obd2-mobile`.
 - App criado em `C:\Projetos\scanner-obd2-mobile\app`.
 - O agente deve considerar que o projeto vai usar Infrastudio; deixar infraestrutura, automacoes, builds finais e operacionalizacao para esse fluxo quando fizer sentido.
+- Env centralizado na raiz: `C:\Projetos\scanner-obd2-mobile\.env`; `app/scripts/sync-env.js` copia para `app/.env` antes dos comandos Expo.
+- APK debug local padronizado na raiz: `C:\Projetos\scanner-obd2-mobile\scanner-obd2-debug.apk`, gerado por `npm run apk:debug` dentro de `app`.
+- Proxima direcao de produto definida: interface premium preto/neon, dashboard com velocimetros animados, filtro guiado por marca/modelo e uso do VIN para evitar selecao manual quando possivel.
 - Stack instalada: Expo SDK 56, React Native, TypeScript, Expo Dev Client, React Navigation, Supabase, Zustand, Zod, React Hook Form e `react-native-bluetooth-classic`.
 - APK preparado via `app/eas.json`, perfil `preview` gerando APK.
 - Migration Supabase criada em `supabase/migrations/20260604124500_initial_schema.sql`.

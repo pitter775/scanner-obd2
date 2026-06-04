@@ -38,3 +38,6 @@ Thumbs.db
 *.p12
 *.key
 *.mobileprovision
+
+# Local build artifacts
+scanner-obd2*.apk

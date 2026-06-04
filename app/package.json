@@ -25,12 +25,21 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
+    "prepare-env": "node scripts/sync-env.js",
+    "prestart": "npm run prepare-env",
     "start": "expo start",
+    "predev-client": "npm run prepare-env",
     "dev-client": "expo start --dev-client",
+    "preandroid": "npm run prepare-env",
     "android": "expo start --android",
+    "preios": "npm run prepare-env",
     "ios": "expo start --ios",
+    "preweb": "npm run prepare-env",
     "web": "expo start --web",
+    "preprebuild": "npm run prepare-env",
     "prebuild": "expo prebuild",
+    "apk:copy": "node scripts/copy-apk.js",
+    "apk:debug": "npm run prebuild -- --platform android && cd android && gradlew.bat assembleDebug && cd .. && npm run apk:copy",
     "typecheck": "tsc --noEmit"
   },
   "private": true
