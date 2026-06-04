@@ -8,5 +8,6 @@ export type RootStackParamList = {
   Dashboard: { vehicle?: Vehicle; adapter?: BluetoothDeviceInfo } | undefined;
   Diagnostics: undefined;
   History: undefined;
+  Debug: undefined;
   Account: undefined;
 };

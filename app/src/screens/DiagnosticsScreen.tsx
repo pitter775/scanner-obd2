@@ -5,10 +5,11 @@ import { AppButton } from '../components/AppButton';
 import { Panel } from '../components/Panel';
 import { Screen } from '../components/Screen';
 import { colors, spacing } from '../config/theme';
-import { isSupabaseConfigured } from '../config/env';
-import { BluetoothConnection } from '../services/bluetoothService';
+import { isCloudSyncEnabled } from '../config/env';
+import { getSharedConnection, obdBluetoothErrorMessage } from '../services/bluetoothService';
+import { recordDiagnosticEvent } from '../services/diagnosticLog';
 import { ObdService } from '../services/obdService';
-import { createScanSession, saveDtcs } from '../services/scanRepository';
+import { createScanSession, finishScanSession, saveDtcs } from '../services/scanRepository';
 import { useAppStore } from '../store/appStore';
 import type { DtcCode } from '../types/domain';
 
@@ -16,33 +17,41 @@ export function DiagnosticsScreen() {
   const activeVehicle = useAppStore((state) => state.activeVehicle);
   const activeAdapter = useAppStore((state) => state.activeAdapter);
   const dtcs = useAppStore((state) => state.dtcs);
+  const setActiveVehicle = useAppStore((state) => state.setActiveVehicle);
   const setDtcs = useAppStore((state) => state.setDtcs);
   const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
 
   async function readDtcs() {
-    if (!activeVehicle || !activeAdapter) {
-      Alert.alert('DTC', 'Selecione um veiculo e um adaptador Bluetooth.');
+    const vehicle = activeVehicle ?? defaultVehicle;
+    if (!activeVehicle) {
+      setActiveVehicle(vehicle);
+    }
+
+    if (!activeAdapter) {
+      setStatusMessage('Conecte o SP359 na tela Bluetooth primeiro.');
       return;
     }
 
     setLoading(true);
-    const connection = new BluetoothConnection();
+    setStatusMessage('');
 
     try {
-      await connection.connect(activeAdapter.address);
+      const connection = await getSharedConnection(activeAdapter.address);
       const obd = new ObdService(connection);
       await obd.initialize();
       const nextDtcs = await obd.readDtcs();
       setDtcs(nextDtcs);
 
-      if (isSupabaseConfigured) {
-        const session = await createScanSession(activeVehicle.id, activeAdapter.name, activeAdapter.address);
+      if (isCloudSyncEnabled) {
+        const session = await createScanSession(vehicle.id, activeAdapter.name, activeAdapter.address);
         await saveDtcs(session.id, nextDtcs);
+        await finishScanSession(session.id);
       }
     } catch (error) {
-      Alert.alert('DTC', error instanceof Error ? error.message : 'Falha ao ler falhas.');
+      recordDiagnosticEvent('error', 'Falha ao ler DTCs', error);
+      setStatusMessage(obdBluetoothErrorMessage(error));
     } finally {
-      await connection.disconnect();
       setLoading(false);
     }
   }
@@ -60,24 +69,24 @@ export function DiagnosticsScreen() {
 
   async function clearDtcs() {
     if (!activeAdapter) {
-      Alert.alert('DTC', 'Selecione um adaptador Bluetooth.');
+      setStatusMessage('Conecte o SP359 na tela Bluetooth primeiro.');
       return;
     }
 
     setLoading(true);
-    const connection = new BluetoothConnection();
+    setStatusMessage('');
 
     try {
-      await connection.connect(activeAdapter.address);
+      const connection = await getSharedConnection(activeAdapter.address);
       const obd = new ObdService(connection);
       await obd.initialize();
       await obd.clearDtcs();
       setDtcs([]);
-      Alert.alert('DTC', 'Comando de apagar falhas enviado.');
+      setStatusMessage('Comando de apagar falhas enviado.');
     } catch (error) {
-      Alert.alert('DTC', error instanceof Error ? error.message : 'Falha ao apagar falhas.');
+      recordDiagnosticEvent('error', 'Falha ao apagar DTCs', error);
+      setStatusMessage(obdBluetoothErrorMessage(error));
     } finally {
-      await connection.disconnect();
       setLoading(false);
     }
   }
@@ -85,6 +94,7 @@ export function DiagnosticsScreen() {
   return (
     <Screen>
       <Panel title="Codigos de falha">
+        {statusMessage ? <Text style={styles.statusMessage}>{statusMessage}</Text> : null}
         <AppButton disabled={loading} onPress={readDtcs}>Ler DTCs</AppButton>
         <AppButton disabled={loading} onPress={confirmClearDtcs} tone="danger">Apagar falhas</AppButton>
       </Panel>
@@ -95,6 +105,14 @@ export function DiagnosticsScreen() {
     </Screen>
   );
 }
+
+const defaultVehicle = {
+  id: 'local-focus-2006',
+  make: 'Ford',
+  model: 'Focus',
+  user_id: 'local',
+  year: 2006,
+};
 
 function DtcCard({ dtc }: { dtc: DtcCode }) {
   return (
@@ -132,6 +150,16 @@ const styles = StyleSheet.create({
   },
   muted: {
     color: colors.muted,
+  },
+  statusMessage: {
+    backgroundColor: colors.panelSoft,
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    color: colors.warning,
+    fontSize: 14,
+    fontWeight: '800',
+    padding: spacing.md,
   },
   status: {
     color: colors.muted,

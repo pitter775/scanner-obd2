@@ -4,3 +4,4 @@ export const env = {
 };
 
 export const isSupabaseConfigured = Boolean(env.supabaseUrl && env.supabaseAnonKey);
+export const isCloudSyncEnabled = false;

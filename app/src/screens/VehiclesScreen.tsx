@@ -6,7 +6,7 @@ import { Panel } from '../components/Panel';
 import { Screen } from '../components/Screen';
 import { TextField } from '../components/TextField';
 import { colors } from '../config/theme';
-import { isSupabaseConfigured } from '../config/env';
+import { isCloudSyncEnabled } from '../config/env';
 import { createVehicle } from '../services/scanRepository';
 import { useAppStore } from '../store/appStore';
 import type { Vehicle } from '../types/domain';
@@ -37,10 +37,10 @@ export function VehiclesScreen() {
       return;
     }
 
-    if (!isSupabaseConfigured) {
+    if (!isCloudSyncEnabled) {
       setActiveVehicle({
         ...payload,
-        id: 'local-focus-2006',
+        id: `local-${Date.now()}`,
         user_id: 'local',
       });
       return;
@@ -51,7 +51,12 @@ export function VehiclesScreen() {
       const vehicle = await createVehicle(payload);
       setActiveVehicle(vehicle);
     } catch (error) {
-      Alert.alert('Veiculo', error instanceof Error ? error.message : 'Falha ao salvar veiculo.');
+      Alert.alert('Veiculo', 'Veiculo selecionado localmente para teste.');
+      setActiveVehicle({
+        ...payload,
+        id: `local-${Date.now()}`,
+        user_id: 'local',
+      });
     } finally {
       setLoading(false);
     }

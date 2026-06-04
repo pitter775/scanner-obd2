@@ -17,6 +17,7 @@ O projeto deve nascer com base tecnica preparada para evoluir para produto comer
 - Autenticacao: Supabase Auth.
 - Infra/agent: usar Infrastudio com agente para as etapas de infraestrutura, automacoes, builds e continuacao operacional quando aplicavel.
 - Env unico: usar somente `C:\Projetos\scanner-obd2-mobile\.env` como fonte; o app sincroniza para `app/.env` nos scripts locais.
+- Banco: toda modificacao deve gerar arquivo SQL em `supabase/seeder/` para execucao pelo Supabase/Infrastudio.
 - Direcao visual futura: visual premium, preto/neon, limpo, animado, com dashboard em estilo velocimetro.
 - Banco local/cache futuro: SQLite, apenas se necessario para uso offline.
 - Comunicacao com scanner: Bluetooth classico/SPP para ELM327.
@@ -437,9 +438,9 @@ Pagamento pode ser analisado depois com Mercado Pago, Stripe ou assinatura pela 
 - [x] Escolher biblioteca Bluetooth classico: `react-native-bluetooth-classic`.
 - [x] Configurar permissoes Android no `app/app.json`.
 - [x] Criar service para listar dispositivos pareados.
-- [x] Criar service base para conectar/desconectar do ELM327.
-- [ ] Criar log visual de comunicacao.
-- [ ] Testar em Android real com o ELM327 pareado.
+- [x] Criar service base para conectar/desconectar do SP359/adaptador OBD2.
+- [x] Criar log visual de comunicacao.
+- [ ] Testar em Android real com o SP359 pareado.
 
 ### Fase 3 - OBD2
 
@@ -449,7 +450,7 @@ Pagamento pode ser analisado depois com Mercado Pago, Stripe ou assinatura pela 
 - [x] Implementar parser das respostas.
 - [x] Mostrar dashboard com leitura manual.
 - [x] Criar camada inicial de filtro/identificacao do veiculo por VIN, protocolo, PIDs, Calibration ID, CVN e ECU name.
-- [ ] Transformar leitura em tempo real continuo com intervalo configuravel.
+- [x] Transformar leitura em tempo real continuo com intervalo configuravel.
 - [ ] Validar parser com respostas reais do Focus 2006.
 
 ### Fase 4 - Diagnostico
@@ -470,7 +471,7 @@ Pagamento pode ser analisado depois com Mercado Pago, Stripe ou assinatura pela 
 - [x] Salvar leituras principais.
 - [x] Salvar DTCs.
 - [x] Criar tabela `vehicle_fingerprints` para salvar assinatura/filtro do veiculo.
-- [ ] Criar historico com consulta real do Supabase.
+- [x] Criar historico com consulta real do Supabase.
 - [ ] Testar RLS em projeto Supabase real.
 
 ### Fase 6 - Produto
@@ -494,33 +495,41 @@ Pagamento pode ser analisado depois com Mercado Pago, Stripe ou assinatura pela 
 - O agente deve considerar que o projeto vai usar Infrastudio; deixar infraestrutura, automacoes, builds finais e operacionalizacao para esse fluxo quando fizer sentido.
 - Env centralizado na raiz: `C:\Projetos\scanner-obd2-mobile\.env`; `app/scripts/sync-env.js` copia para `app/.env` antes dos comandos Expo.
 - APK debug local padronizado na raiz: `C:\Projetos\scanner-obd2-mobile\scanner-obd2-debug.apk`, gerado por `npm run apk:debug` dentro de `app`.
+- APK release/standalone padronizado na raiz: `C:\Projetos\scanner-obd2-mobile\scanner-obd2-release.apk`, gerado por `npm run apk:release` dentro de `app`.
+- Arquivo de instrucao para agentes consolidado em `AGENTS.md`; `AGENT.md` removido.
+- Seeder inicial do banco criado em `supabase/seeder/20260604124500_initial_schema.sql`.
 - Proxima direcao de produto definida: interface premium preto/neon, dashboard com velocimetros animados, filtro guiado por marca/modelo e uso do VIN para evitar selecao manual quando possivel.
 - Stack instalada: Expo SDK 56, React Native, TypeScript, Expo Dev Client, React Navigation, Supabase, Zustand, Zod, React Hook Form e `react-native-bluetooth-classic`.
 - APK preparado via `app/eas.json`, perfil `preview` gerando APK.
 - Migration Supabase criada em `supabase/migrations/20260604124500_initial_schema.sql`.
 - Filtro inicial de veiculo implementado no app: botao `Identificar veiculo` no Dashboard, usando `0902`, `0904`, `0906`, `090A`, `ATDPN`, `0100` e `0120`.
+- Dashboard agora tem log visual OBD2 e leitura continua com intervalo configuravel.
+- Tela Debug criada no app release para inspecionar ambiente, adaptador, veiculo, fingerprint, leituras, DTCs e log OBD2.
+- Login inicial simplificado em modo teste para validar o scanner sem depender de confirmacao de email/Supabase Auth.
+- Sincronizacao em nuvem desativada neste APK de teste para evitar erros de sessao Supabase durante validacao do carro.
+- Permissoes Bluetooth Android solicitadas na entrada do app antes de listar/conectar no SP359.
+- Ford Focus 2006 definido automaticamente como veiculo local padrao para evitar bloqueio no Dashboard durante o primeiro teste.
+- Fluxo ajustado para passar primeiro pela tela Bluetooth: o SP359 precisa responder ao handshake antes de liberar Dashboard/DTC/Veiculos/Debug.
+- Dashboard e DTC usam a conexao Bluetooth compartilhada ja validada, sem reconectar e derrubar o socket a cada leitura.
+- Erros brutos de Java/Bluetooth agora sao traduzidos para mensagens em portugues dentro da tela.
+- Loader de conexao redesenhado para validacao do SP359, conexao e leitura.
+- Permissoes Bluetooth movidas para a tela inicial para evitar prompts durante Bluetooth/Dashboard.
+- Conexao ELM327 corrigida para manter o objeto do dispositivo apos `connect()`, usar delimitador `>`, limpar buffer antes de comandos e aguardar respostas lentas de clones.
+- Inicializacao OBD2 ajustada com timeouts maiores para `ATZ`, comandos AT e `0100`.
+- Tela Debug ganhou relatorio compartilhavel com estado do app, erros/avisos capturados, log OBD2, leituras, DTCs, adaptador e veiculo para enviar apos testes no carro.
+- Historico agora consulta sessoes reais no Supabase.
+- APK release local gerado em `C:\Projetos\scanner-obd2-mobile\scanner-obd2-release.apk`; APK debug antigo removido.
+- Node portatil `v20.20.2` e Android SDK local instalados em `.tools/` para viabilizar build local.
 - Documentacao criada em `README.md`, `supabase/README.md`, `docs/architecture.md`, `docs/roadmap.md` e `docs/obd2/elm327.md`.
 - Typecheck passou com `npm run typecheck`.
 - `npx eas-cli --version` funcionou e retornou `eas-cli/20.0.0`.
-- Ponto de atencao: Node instalado e `v20.11.1`; Expo SDK 56 emitiu aviso pedindo Node mais novo. Atualizar Node antes de build real se aparecer erro.
+- Ponto de atencao: Node global ainda pode estar em `v20.11.1`; para build local foi usado Node portatil `v20.20.2` em `.tools/`.
 - Ponto de atencao: Bluetooth classico so deve ser validado em Android real com build nativo/dev client, nao no Expo Go.
 - Nao foi feito push.
 
 ## Proximo passo recomendado
 
-Criar o app base em:
-
-```text
-C:\Projetos\scanner-obd2-mobile\app
-```
-
-Depois configurar:
-
-- Expo + TypeScript
-- Supabase client
-- navegacao
-- telas iniciais
-- estrutura de services
-- migration SQL inicial
-
-Nao fazer push sem pedido explicito do usuario.
+- Instalar o APK em um Android real.
+- Parear o SP359 nas configuracoes do Android.
+- Gerar novo APK e validar conexao, comandos OBD2, parser com respostas reais do Focus 2006 e RLS no Supabase real.
+- Nao fazer push sem pedido explicito do usuario.

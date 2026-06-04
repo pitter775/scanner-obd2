@@ -1,14 +1,16 @@
-import { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { AppButton } from '../components/AppButton';
+import { ConnectionGauge } from '../components/ConnectionGauge';
 import { Panel } from '../components/Panel';
 import { Screen } from '../components/Screen';
 import { colors, spacing } from '../config/theme';
-import { isSupabaseConfigured } from '../config/env';
-import { BluetoothConnection } from '../services/bluetoothService';
+import { isCloudSyncEnabled } from '../config/env';
+import { getSharedConnection, obdBluetoothErrorMessage, type BluetoothConnection } from '../services/bluetoothService';
+import { recordDiagnosticEvent } from '../services/diagnosticLog';
 import { ObdService } from '../services/obdService';
-import { createScanSession, saveReadings, saveVehicleFingerprint } from '../services/scanRepository';
+import { createScanSession, finishScanSession, saveReadings, saveVehicleFingerprint } from '../services/scanRepository';
 import { useAppStore } from '../store/appStore';
 import type { ObdReading, VehicleFingerprint } from '../types/domain';
 
@@ -21,71 +23,177 @@ export function DashboardScreen() {
   const fingerprint = useAppStore((state) => state.fingerprint);
   const readings = useAppStore((state) => state.readings);
   const setFingerprint = useAppStore((state) => state.setFingerprint);
+  const setActiveVehicle = useAppStore((state) => state.setActiveVehicle);
   const setReadings = useAppStore((state) => state.setReadings);
   const [loading, setLoading] = useState(false);
+  const [loadingLabel, setLoadingLabel] = useState('Conectando ao adaptador OBD2...');
+  const [statusMessage, setStatusMessage] = useState('');
+  const [liveRunning, setLiveRunning] = useState(false);
+  const [intervalMs, setIntervalMs] = useState(2000);
+  const liveConnectionRef = useRef<BluetoothConnection | null>(null);
+  const liveSessionIdRef = useRef<string | null>(null);
+  const liveRunningRef = useRef(false);
+  const liveFinalStatusRef = useRef<'finished' | 'failed'>('finished');
+
+  useEffect(() => () => {
+    liveRunningRef.current = false;
+  }, []);
 
   async function startDiagnostic() {
-    if (!activeVehicle || !activeAdapter) {
-      Alert.alert('Diagnostico', 'Selecione um veiculo e um adaptador Bluetooth.');
+    const vehicle = activeVehicle ?? defaultVehicle;
+    if (!activeVehicle) {
+      setActiveVehicle(vehicle);
+    }
+
+    if (!activeAdapter) {
+      setStatusMessage('Conecte o SP359 na tela Bluetooth primeiro.');
       return;
     }
 
     setLoading(true);
+    setLoadingLabel('Conectando ao adaptador OBD2...');
+    setStatusMessage('');
     clearCommunicationLog();
-    const connection = new BluetoothConnection();
 
     try {
-      await connection.connect(activeAdapter.address);
+      const connection = await getSharedConnection(activeAdapter.address);
+      setLoadingLabel('Inicializando adaptador...');
       const obd = new ObdService(connection, appendCommunicationLog);
       await obd.initialize();
+      setLoadingLabel('Lendo sensores...');
       const nextReadings = await obd.readLiveData();
       setReadings(nextReadings);
 
-      if (isSupabaseConfigured) {
-        const session = await createScanSession(activeVehicle.id, activeAdapter.name, activeAdapter.address);
+      if (isCloudSyncEnabled) {
+        const session = await createScanSession(vehicle.id, activeAdapter.name, activeAdapter.address);
         await saveReadings(session.id, nextReadings);
+        await finishScanSession(session.id);
       }
     } catch (error) {
-      Alert.alert('Diagnostico', error instanceof Error ? error.message : 'Falha ao ler dados OBD2.');
+      recordDiagnosticEvent('error', 'Falha ao ler sensores OBD2', error);
+      setStatusMessage(obdBluetoothErrorMessage(error));
     } finally {
-      await connection.disconnect();
       setLoading(false);
     }
   }
 
   async function identifyVehicle() {
-    if (!activeVehicle || !activeAdapter) {
-      Alert.alert('Identificacao', 'Selecione um veiculo e um adaptador Bluetooth.');
+    const vehicle = activeVehicle ?? defaultVehicle;
+    if (!activeVehicle) {
+      setActiveVehicle(vehicle);
+    }
+
+    if (!activeAdapter) {
+      setStatusMessage('Conecte o SP359 na tela Bluetooth primeiro.');
       return;
     }
 
     setLoading(true);
+    setLoadingLabel('Conectando ao adaptador OBD2...');
+    setStatusMessage('');
     clearCommunicationLog();
-    const connection = new BluetoothConnection();
 
     try {
-      await connection.connect(activeAdapter.address);
+      const connection = await getSharedConnection(activeAdapter.address);
+      setLoadingLabel('Coletando identificacao...');
       const obd = new ObdService(connection, appendCommunicationLog);
       await obd.initialize();
       const nextFingerprint = await obd.identifyVehicle();
       setFingerprint(nextFingerprint);
 
-      if (isSupabaseConfigured) {
-        const session = await createScanSession(activeVehicle.id, activeAdapter.name, activeAdapter.address);
-        await saveVehicleFingerprint(activeVehicle.id, session.id, nextFingerprint);
+      if (isCloudSyncEnabled) {
+        const session = await createScanSession(vehicle.id, activeAdapter.name, activeAdapter.address);
+        await saveVehicleFingerprint(vehicle.id, session.id, nextFingerprint);
+        await finishScanSession(session.id);
       }
     } catch (error) {
-      Alert.alert('Identificacao', error instanceof Error ? error.message : 'Falha ao identificar veiculo.');
+      recordDiagnosticEvent('error', 'Falha ao identificar veiculo via OBD2', error);
+      setStatusMessage(obdBluetoothErrorMessage(error));
     } finally {
-      await connection.disconnect();
       setLoading(false);
     }
+  }
+
+  async function startLiveDiagnostic() {
+    const vehicle = activeVehicle ?? defaultVehicle;
+    if (!activeVehicle) {
+      setActiveVehicle(vehicle);
+    }
+
+    if (!activeAdapter) {
+      setStatusMessage('Conecte o SP359 na tela Bluetooth primeiro.');
+      return;
+    }
+
+    setLoading(true);
+    setLoadingLabel('Conectando ao adaptador OBD2...');
+    setStatusMessage('');
+    clearCommunicationLog();
+
+    try {
+      const connection = await getSharedConnection(activeAdapter.address);
+      liveConnectionRef.current = connection;
+      setLoadingLabel('Inicializando leitura continua...');
+      const obd = new ObdService(connection, appendCommunicationLog);
+      await obd.initialize();
+
+      if (isCloudSyncEnabled) {
+        const session = await createScanSession(vehicle.id, activeAdapter.name, activeAdapter.address);
+        liveSessionIdRef.current = session.id;
+      }
+
+      liveRunningRef.current = true;
+      liveFinalStatusRef.current = 'finished';
+      setLiveRunning(true);
+
+      while (liveRunningRef.current) {
+        setLoadingLabel('Atualizando sensores...');
+        const nextReadings = await obd.readLiveData();
+        setReadings(nextReadings);
+
+        if (isCloudSyncEnabled && liveSessionIdRef.current) {
+          await saveReadings(liveSessionIdRef.current, nextReadings);
+        }
+
+        await delay(intervalMs);
+      }
+    } catch (error) {
+      recordDiagnosticEvent('error', 'Falha na leitura continua OBD2', error);
+      liveFinalStatusRef.current = 'failed';
+      setStatusMessage(obdBluetoothErrorMessage(error));
+    } finally {
+      if (isCloudSyncEnabled && liveSessionIdRef.current) {
+        await finishScanSession(liveSessionIdRef.current, liveFinalStatusRef.current);
+      }
+      liveSessionIdRef.current = null;
+      liveRunningRef.current = false;
+      setLiveRunning(false);
+      liveConnectionRef.current = null;
+      setLoading(false);
+    }
+  }
+
+  function stopLiveDiagnostic() {
+    liveRunningRef.current = false;
+    setLiveRunning(false);
   }
 
   return (
     <Screen>
       <Panel title="Leitura em tempo real">
+        <ConnectionGauge active={loading} label={loadingLabel} />
+        {statusMessage ? <Text style={styles.statusMessage}>{statusMessage}</Text> : null}
         <AppButton disabled={loading} onPress={startDiagnostic}>Ler sensores agora</AppButton>
+        <View style={styles.intervalRow}>
+          <Text style={styles.muted}>Intervalo: {intervalMs / 1000}s</Text>
+          <View style={styles.intervalActions}>
+            <AppButton disabled={loading || intervalMs <= 1000} onPress={() => setIntervalMs((value) => Math.max(1000, value - 1000))} tone="secondary">-</AppButton>
+            <AppButton disabled={loading || intervalMs >= 5000} onPress={() => setIntervalMs((value) => Math.min(5000, value + 1000))} tone="secondary">+</AppButton>
+          </View>
+        </View>
+        <AppButton disabled={loading && !liveRunning} onPress={liveRunning ? stopLiveDiagnostic : startLiveDiagnostic} tone={liveRunning ? 'danger' : 'secondary'}>
+          {liveRunning ? 'Parar leitura continua' : 'Iniciar leitura continua'}
+        </AppButton>
         <AppButton disabled={loading} onPress={identifyVehicle} tone="secondary">Identificar veiculo</AppButton>
       </Panel>
 
@@ -165,8 +273,27 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
+  intervalActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  intervalRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
   muted: {
     color: colors.muted,
+  },
+  statusMessage: {
+    backgroundColor: colors.panelSoft,
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    color: colors.warning,
+    fontSize: 14,
+    fontWeight: '800',
+    padding: spacing.md,
   },
   fingerprintMain: {
     color: colors.text,
@@ -186,3 +313,17 @@ const confidenceLabel: Record<VehicleFingerprint['confidence'], string> = {
   medium: 'media',
   none: 'nenhuma',
 };
+
+const defaultVehicle = {
+  id: 'local-focus-2006',
+  make: 'Ford',
+  model: 'Focus',
+  user_id: 'local',
+  year: 2006,
+};
+
+function delay(ms: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}

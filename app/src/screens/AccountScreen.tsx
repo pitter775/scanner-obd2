@@ -4,18 +4,10 @@ import { AppButton } from '../components/AppButton';
 import { Panel } from '../components/Panel';
 import { Screen } from '../components/Screen';
 import { colors } from '../config/theme';
-import { isSupabaseConfigured } from '../config/env';
-import { supabase } from '../lib/supabase/client';
 
 export function AccountScreen() {
   async function signOut() {
-    if (!isSupabaseConfigured) {
-      Alert.alert('Conta', 'Supabase ainda nao configurado.');
-      return;
-    }
-
-    await supabase.auth.signOut();
-    Alert.alert('Conta', 'Sessao encerrada.');
+    Alert.alert('Conta', 'Modo teste ativo. Nao ha sessao online para encerrar.');
   }
 
   return (

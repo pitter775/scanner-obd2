@@ -2,9 +2,9 @@ import { parseDtcResponse } from '../lib/obd/dtc';
 import { buildFingerprint } from '../lib/obd/fingerprint';
 import { obdPids, parsePidResponse } from '../lib/obd/pids';
 import type { DtcCode, ObdReading, VehicleFingerprint } from '../types/domain';
-import { BluetoothConnection } from './bluetoothService';
+import { BluetoothConnection, normalizeElmResponse, sendElmCommand } from './bluetoothService';
 
-const initCommands = ['ATZ', 'ATE0', 'ATL0', 'ATS0', 'ATH0', 'ATSP0', '0100'];
+const initCommands = ['ATZ', 'ATE0', 'ATL0', 'ATS0', 'ATH0', 'ATSP0'];
 
 export class ObdService {
   constructor(
@@ -16,8 +16,10 @@ export class ObdService {
     const responses: string[] = [];
 
     for (const command of initCommands) {
-      responses.push(await this.sendCommand(command));
+      responses.push(await this.sendCommand(command, command === 'ATZ' ? 8000 : 5000));
     }
+
+    responses.push(await this.sendCommand('0100', 10000));
 
     return responses;
   }
@@ -65,18 +67,10 @@ export class ObdService {
     return this.sendCommand('04');
   }
 
-  private async sendCommand(command: string) {
+  private async sendCommand(command: string, timeoutMs = 6000) {
     this.onLog?.(`> ${command}`);
-    await this.connection.send(command);
-    await delay(250);
-    const response = await this.connection.read();
-    this.onLog?.(`< ${response.trim() || 'sem resposta'}`);
+    const response = normalizeElmResponse(await sendElmCommand(this.connection, command, { timeoutMs }));
+    this.onLog?.(`< ${response || 'sem resposta'}`);
     return response;
   }
-}
-
-function delay(ms: number) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
 }

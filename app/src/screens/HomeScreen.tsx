@@ -13,21 +13,21 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 export function HomeScreen({ navigation }: Props) {
   const activeVehicle = useAppStore((state) => state.activeVehicle);
   const activeAdapter = useAppStore((state) => state.activeAdapter);
+  const connectionReady = useAppStore((state) => state.connectionReady);
 
   return (
     <Screen>
       <Panel title="Status">
         <Info label="Veiculo" value={activeVehicle ? `${activeVehicle.make} ${activeVehicle.model} ${activeVehicle.year}` : 'Nenhum selecionado'} />
-        <Info label="Adaptador" value={activeAdapter?.name ?? 'Nenhum conectado'} />
+        <Info label="Adaptador" value={connectionReady && activeAdapter ? `${activeAdapter.name} conectado` : 'Conecte o adaptador OBD2 primeiro'} />
       </Panel>
 
       <Panel title="Acoes">
-        <AppButton onPress={() => navigation.navigate('Vehicles')}>Veiculos</AppButton>
-        <AppButton onPress={() => navigation.navigate('Bluetooth')} tone="secondary">Bluetooth ELM327</AppButton>
-        <AppButton onPress={() => navigation.navigate('Dashboard')} tone="secondary">Iniciar diagnostico</AppButton>
-        <AppButton onPress={() => navigation.navigate('Diagnostics')} tone="secondary">Codigos de falha</AppButton>
-        <AppButton onPress={() => navigation.navigate('History')} tone="secondary">Historico</AppButton>
-        <AppButton onPress={() => navigation.navigate('Account')} tone="secondary">Conta</AppButton>
+        <AppButton onPress={() => navigation.navigate('Bluetooth')}>Conectar adaptador OBD2</AppButton>
+        <AppButton disabled={!connectionReady} onPress={() => navigation.navigate('Dashboard')} tone="secondary">Iniciar diagnostico</AppButton>
+        <AppButton disabled={!connectionReady} onPress={() => navigation.navigate('Diagnostics')} tone="secondary">Codigos de falha</AppButton>
+        <AppButton disabled={!connectionReady} onPress={() => navigation.navigate('Vehicles')} tone="secondary">Veiculos</AppButton>
+        <AppButton disabled={!connectionReady} onPress={() => navigation.navigate('Debug')} tone="secondary">Debug</AppButton>
       </Panel>
     </Screen>
   );

@@ -1,6 +1,7 @@
 # dependencies
 node_modules/
 app/node_modules/
+.tools/
 
 # Expo
 .expo/

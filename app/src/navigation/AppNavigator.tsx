@@ -4,6 +4,7 @@ import { colors } from '../config/theme';
 import { AccountScreen } from '../screens/AccountScreen';
 import { BluetoothScreen } from '../screens/BluetoothScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
+import { DebugScreen } from '../screens/DebugScreen';
 import { DiagnosticsScreen } from '../screens/DiagnosticsScreen';
 import { HistoryScreen } from '../screens/HistoryScreen';
 import { HomeScreen } from '../screens/HomeScreen';
@@ -31,6 +32,7 @@ export function AppNavigator() {
       <Stack.Screen component={DashboardScreen} name="Dashboard" options={{ title: 'Dashboard' }} />
       <Stack.Screen component={DiagnosticsScreen} name="Diagnostics" options={{ title: 'Falhas DTC' }} />
       <Stack.Screen component={HistoryScreen} name="History" options={{ title: 'Historico' }} />
+      <Stack.Screen component={DebugScreen} name="Debug" options={{ title: 'Debug' }} />
       <Stack.Screen component={AccountScreen} name="Account" options={{ title: 'Conta' }} />
     </Stack.Navigator>
   );
