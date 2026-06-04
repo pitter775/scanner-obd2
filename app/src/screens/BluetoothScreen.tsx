@@ -21,17 +21,21 @@ export function BluetoothScreen({ navigation }: Props) {
   const setActiveAdapter = useAppStore((state) => state.setActiveAdapter);
   const setConnectionReady = useAppStore((state) => state.setConnectionReady);
   const [devices, setDevices] = useState<BluetoothDeviceInfo[]>([]);
+  const [consoleLines, setConsoleLines] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [connectingDeviceId, setConnectingDeviceId] = useState<string | null>(null);
   const [status, setStatus] = useState('Busque e conecte o SP359 antes de continuar.');
 
   async function loadDevices() {
     setLoading(true);
+    appendConsole('Listando dispositivos pareados');
     try {
       const nextDevices = await listPairedDevices();
       setDevices(sortObdCandidates(nextDevices));
+      appendConsole(`Encontrados: ${nextDevices.length}`);
       setStatus(nextDevices.length ? 'Selecione o SP359 ou o adaptador OBD2 pareado.' : 'Nenhum dispositivo pareado encontrado.');
     } catch (error) {
+      appendConsole(`Erro ao listar: ${errorMessage(error)}`);
       recordDiagnosticEvent('error', 'Falha ao listar dispositivos Bluetooth', error);
       setStatus(bluetoothErrorMessage(error));
     } finally {
@@ -43,15 +47,18 @@ export function BluetoothScreen({ navigation }: Props) {
     setLoading(true);
     setConnectingDeviceId(device.id);
     setConnectionReady(false);
+    setConsoleLines([]);
     setStatus(`Conectando em ${device.name}...`);
+    appendConsole(`Selecionado ${device.name} (${device.address})`);
 
     try {
-      const response = await testAdapterHandshake(device.address);
+      const response = await testAdapterHandshake(device.address, appendConsole);
       setActiveAdapter(device);
       setConnectionReady(true);
       setStatus(`${device.name} conectado. Resposta: ${response.slice(0, 40)}`);
       navigation.replace('Home');
     } catch (error) {
+      appendConsole(`Falha final: ${errorMessage(error)}`);
       recordDiagnosticEvent('error', `Falha ao validar adaptador ${device.name}`, error);
       const message = obdBluetoothErrorMessage(error);
       setStatus(message);
@@ -86,18 +93,33 @@ export function BluetoothScreen({ navigation }: Props) {
           </Pressable>
         ))}
       </Panel>
+
+      <Panel title="Console de conexao">
+        {consoleLines.length ? consoleLines.slice(-80).map((line, index) => (
+          <Text key={`${line}-${index}`} selectable style={styles.consoleLine}>{line}</Text>
+        )) : <Text style={styles.muted}>Nenhuma tentativa registrada.</Text>}
+      </Panel>
     </Screen>
   );
+
+  function appendConsole(line: string) {
+    const timestamp = new Date().toLocaleTimeString('pt-BR', { hour12: false });
+    setConsoleLines((current) => [...current.slice(-119), `[${timestamp}] ${line}`]);
+  }
 }
 
 function bluetoothErrorMessage(error: unknown) {
-  const message = error instanceof Error ? error.message : '';
+  const message = errorMessage(error);
 
   if (message.includes('BLUETOOTH_CONNECT') || message.includes('Permission')) {
     return 'Permissao Bluetooth pendente. Volte para a tela inicial e toque em Preparar permissoes.';
   }
 
   return message || 'Falha ao listar dispositivos pareados.';
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error ?? '');
 }
 
 function sortObdCandidates(devices: BluetoothDeviceInfo[]) {
@@ -116,6 +138,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     padding: spacing.md,
+  },
+  consoleLine: {
+    color: colors.muted,
+    fontFamily: 'monospace',
+    fontSize: 12,
+    lineHeight: 17,
   },
   muted: {
     color: colors.muted,

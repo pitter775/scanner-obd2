@@ -20,6 +20,7 @@ type BluetoothConnectionOptions = {
   charset?: string;
   delimiter?: string;
   readSize?: number;
+  secure?: boolean;
   secureSocket?: boolean;
 };
 
@@ -28,15 +29,16 @@ type BluetoothConnectionStrategy = BluetoothConnectionOptions & {
 };
 
 type BluetoothModule = {
+  cancelDiscovery?: () => Promise<boolean>;
   getBondedDevices?: () => Promise<ClassicDevice[]>;
   requestBluetoothEnabled?: () => Promise<boolean>;
 };
 
 const elmConnectionStrategies: BluetoothConnectionStrategy[] = [
-  { charset: 'ascii', delimiter: '', label: 'secure/raw', readSize: 1024, secureSocket: true },
-  { charset: 'ascii', delimiter: '>', label: 'secure/prompt', readSize: 1024, secureSocket: true },
-  { charset: 'ascii', delimiter: '', label: 'insecure/raw', readSize: 1024, secureSocket: false },
-  { charset: 'ascii', delimiter: '>', label: 'insecure/prompt', readSize: 1024, secureSocket: false },
+  { charset: 'ascii', delimiter: '', label: 'secure/raw', readSize: 1024, secure: true },
+  { charset: 'ascii', delimiter: '>', label: 'secure/prompt', readSize: 1024, secure: true },
+  { charset: 'ascii', delimiter: '', label: 'insecure/raw', readSize: 1024, secure: false },
+  { charset: 'ascii', delimiter: '>', label: 'insecure/prompt', readSize: 1024, secure: false },
 ];
 
 let sharedConnection: BluetoothConnection | undefined;
@@ -71,7 +73,9 @@ export class BluetoothConnection {
 
   async connect(address: string) {
     await ensureBluetoothPermissionsGranted();
-    const devices = await getBluetoothModule().getBondedDevices?.();
+    const bluetooth = getBluetoothModule();
+    await bluetooth.cancelDiscovery?.();
+    const devices = await bluetooth.getBondedDevices?.();
     const selected = devices?.find((device) => device.address === address || device.id === address);
 
     if (!selected?.connect) {
@@ -144,7 +148,9 @@ export async function getSharedConnection(address: string) {
   return connectSharedAdapter(address);
 }
 
-export async function testAdapterHandshake(address: string) {
+type ConnectionProgress = (line: string) => void;
+
+export async function testAdapterHandshake(address: string, onProgress?: ConnectionProgress) {
   await disconnectSharedAdapter();
   const errors: string[] = [];
 
@@ -152,16 +158,20 @@ export async function testAdapterHandshake(address: string) {
     const connection = new BluetoothConnection(strategy);
 
     try {
+      onProgress?.(`Tentando ${strategy.label}`);
       await connection.connect(address);
+      onProgress?.(`Socket abriu: ${strategy.label}`);
       recordDiagnosticEvent('info', `Bluetooth conectado com estrategia ${strategy.label}`);
-      const response = await runElmHandshake(connection);
+      const response = await runElmHandshake(connection, onProgress);
 
       sharedConnection = connection;
       sharedAddress = address;
       sharedStrategy = strategy;
+      onProgress?.(`Validado: ${strategy.label}`);
       return response;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error ?? '');
+      onProgress?.(`Falhou ${strategy.label}: ${message}`);
       errors.push(`${strategy.label}: ${message}`);
       recordDiagnosticEvent('warn', `Estrategia Bluetooth falhou: ${strategy.label}`, error);
       await connection.disconnect();
@@ -335,7 +345,7 @@ async function connectWithStrategies(address: string) {
   throw new Error(errors.join('\n') || 'Nao foi possivel conectar no adaptador.');
 }
 
-async function runElmHandshake(connection: BluetoothConnection) {
+async function runElmHandshake(connection: BluetoothConnection, onProgress?: ConnectionProgress) {
   const responses: string[] = [];
   const commands: Array<[string, ElmCommandOptions]> = [
     ['ATZ', { settleMs: 1800, timeoutMs: 10000 }],
@@ -350,15 +360,18 @@ async function runElmHandshake(connection: BluetoothConnection) {
 
   for (const [command, options] of commands) {
     try {
+      onProgress?.(`Enviando ${command}`);
       const rawResponse = await sendElmCommand(connection, command, options);
       const normalizedResponse = normalizeElmResponse(rawResponse);
       responses.push(`${command} RAW: ${formatRaw(rawResponse) || 'sem resposta'}`);
       responses.push(`${command} NORMALIZADO: ${normalizedResponse || 'sem resposta'}`);
       recordDiagnosticEvent('info', `ELM ${command} RAW`, formatRaw(rawResponse) || 'sem resposta');
+      onProgress?.(`${command}: ${formatRaw(rawResponse) || 'sem resposta'}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error ?? '');
       responses.push(`${command}: ERRO ${message}`);
       recordDiagnosticEvent('warn', `ELM ${command} falhou`, error);
+      onProgress?.(`${command}: erro ${message}`);
     }
   }
 
@@ -396,6 +409,7 @@ function connectionOptions(strategy: BluetoothConnectionStrategy): BluetoothConn
     charset: strategy.charset,
     delimiter: strategy.delimiter,
     readSize: strategy.readSize,
-    secureSocket: strategy.secureSocket,
+    secure: strategy.secure,
+    secureSocket: strategy.secure,
   };
 }

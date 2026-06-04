@@ -519,6 +519,7 @@ Pagamento pode ser analisado depois com Mercado Pago, Stripe ou assinatura pela 
 - Tela Debug ganhou relatorio compartilhavel com estado do app, erros/avisos capturados, log OBD2, leituras, DTCs, adaptador e veiculo para enviar apos testes no carro.
 - Handshake Bluetooth/ELM agora tenta multiplas estrategias de socket/delimitador (`secure/raw`, `secure/prompt`, `insecure/raw`, `insecure/prompt`) e registra cada comando/resposta no relatorio.
 - Tela Bluetooth agora permite compartilhar relatorio e abrir Debug mesmo quando a validacao do adaptador falha; log cru registra TX/RX, bytes disponiveis, estrategia e resposta sem depender de filtro.
+- Console de conexao adicionado na tela Bluetooth; conexao agora cancela discovery antes de abrir socket e usa a chave nativa `secure` para realmente alternar entre socket seguro/inseguro.
 - Historico agora consulta sessoes reais no Supabase.
 - APK release local gerado em `C:\Projetos\scanner-obd2-mobile\scanner-obd2-release.apk`; APK debug antigo removido.
 - Node portatil `v20.20.2` e Android SDK local instalados em `.tools/` para viabilizar build local.
