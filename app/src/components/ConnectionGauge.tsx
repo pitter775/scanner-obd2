@@ -6,9 +6,10 @@ import { colors, spacing } from '../config/theme';
 type ConnectionGaugeProps = {
   label: string;
   active: boolean;
+  moduleName?: string;
 };
 
-export function ConnectionGauge({ active, label }: ConnectionGaugeProps) {
+export function ConnectionGauge({ active, label, moduleName = 'OBDII' }: ConnectionGaugeProps) {
   const pulse = useRef(new Animated.Value(0)).current;
   const scan = useRef(new Animated.Value(0)).current;
 
@@ -80,7 +81,7 @@ export function ConnectionGauge({ active, label }: ConnectionGaugeProps) {
         <View style={[styles.ring, styles.ringInner]} />
         <View style={styles.module}>
           <Animated.View style={[styles.scanLine, { transform: [{ translateX: scanTranslate }] }]} />
-          <Text style={styles.moduleText}>SP359</Text>
+          <Text style={styles.moduleText}>{moduleName}</Text>
           <Text style={styles.moduleSubtext}>OBD2</Text>
         </View>
       </View>

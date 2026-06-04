@@ -520,6 +520,13 @@ Pagamento pode ser analisado depois com Mercado Pago, Stripe ou assinatura pela 
 - Handshake Bluetooth/ELM agora tenta multiplas estrategias de socket/delimitador (`secure/raw`, `secure/prompt`, `insecure/raw`, `insecure/prompt`) e registra cada comando/resposta no relatorio.
 - Tela Bluetooth agora permite compartilhar relatorio e abrir Debug mesmo quando a validacao do adaptador falha; log cru registra TX/RX, bytes disponiveis, estrategia e resposta sem depender de filtro.
 - Console de conexao adicionado na tela Bluetooth; conexao agora cancela discovery antes de abrir socket e usa a chave nativa `secure` para realmente alternar entre socket seguro/inseguro.
+- Basico OBD validado em carro real com adaptador `OBDII`: ELM327 v1.5 respondeu, ECU retornou RPM, velocidade, temperatura, carga, borboleta, pressao, tensao e fingerprint.
+- Dashboard melhorado para realtime sem intervalo fixo, atualizando cada sensor assim que a ECU responde; opcoes de intervalo foram removidas da area principal.
+- Relatorio agora inclui respostas OBD2 brutas coletadas para avaliar PIDs aproveitaveis.
+- Parser de VIN/chassi multiframes ajustado e WMI `8AF` adicionado para Ford Argentina.
+- Tela Bluetooth ganhou busca de dispositivos proximos, pareamento pelo app, conexao rapida com ultimo scanner e textos mais praticos.
+- Navegacao inferior com icones adicionada nas telas principais.
+- Dashboard passou a exibir imagem temporaria do carro por URL de busca Bing sem salvar no banco.
 - Historico agora consulta sessoes reais no Supabase.
 - APK release local gerado em `C:\Projetos\scanner-obd2-mobile\scanner-obd2-release.apk`; APK debug antigo removido.
 - Node portatil `v20.20.2` e Android SDK local instalados em `.tools/` para viabilizar build local.

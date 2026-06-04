@@ -31,7 +31,9 @@ type BluetoothConnectionStrategy = BluetoothConnectionOptions & {
 type BluetoothModule = {
   cancelDiscovery?: () => Promise<boolean>;
   getBondedDevices?: () => Promise<ClassicDevice[]>;
+  pairDevice?: (address: string) => Promise<ClassicDevice>;
   requestBluetoothEnabled?: () => Promise<boolean>;
+  startDiscovery?: () => Promise<ClassicDevice[]>;
 };
 
 const elmConnectionStrategies: BluetoothConnectionStrategy[] = [
@@ -61,6 +63,36 @@ export async function listPairedDevices(): Promise<BluetoothDeviceInfo[]> {
     name: device.name ?? 'Dispositivo sem nome',
     address: device.address ?? device.id ?? '',
   }));
+}
+
+export async function listAvailableDevices(): Promise<BluetoothDeviceInfo[]> {
+  await ensureBluetoothPermissionsGranted();
+  const bluetooth = getBluetoothModule();
+  await bluetooth.requestBluetoothEnabled?.();
+  const devices = await bluetooth.startDiscovery?.();
+
+  return (devices ?? []).map((device) => ({
+    id: device.id ?? device.address ?? 'unknown',
+    name: device.name ?? 'Dispositivo sem nome',
+    address: device.address ?? device.id ?? '',
+  }));
+}
+
+export async function pairBluetoothDevice(address: string): Promise<BluetoothDeviceInfo> {
+  await ensureBluetoothPermissionsGranted();
+  const bluetooth = getBluetoothModule();
+  await bluetooth.cancelDiscovery?.();
+  const device = await bluetooth.pairDevice?.(address);
+
+  if (!device) {
+    throw new Error('Nao foi possivel parear este dispositivo. Tente parear nas configuracoes do Android.');
+  }
+
+  return {
+    id: device.id ?? device.address ?? address,
+    name: device.name ?? 'Dispositivo sem nome',
+    address: device.address ?? device.id ?? address,
+  };
 }
 
 export class BluetoothConnection {

@@ -40,7 +40,7 @@ export class ObdService {
     });
   }
 
-  async readLiveData(): Promise<ObdReading[]> {
+  async readLiveData(onReading?: (reading: ObdReading) => void): Promise<ObdReading[]> {
     const readings: ObdReading[] = [];
 
     for (const pid of obdPids) {
@@ -49,10 +49,26 @@ export class ObdService {
 
       if (parsed) {
         readings.push(parsed);
+        onReading?.(parsed);
       }
     }
 
     return readings;
+  }
+
+  async readRawSnapshot() {
+    const commands = ['0100', '0120', '0140', '0160', ...obdPids.map((pid) => pid.pid), '03', '07', '0A', '0902', '0904', '0906', '090A', 'ATDPN'];
+    const responses: string[] = [];
+
+    for (const command of [...new Set(commands)]) {
+      try {
+        responses.push(`${command}: ${await this.sendCommand(command, 8000) || 'sem resposta'}`);
+      } catch (error) {
+        responses.push(`${command}: ERRO ${error instanceof Error ? error.message : String(error ?? '')}`);
+      }
+    }
+
+    return responses;
   }
 
   async readDtcs(): Promise<DtcCode[]> {

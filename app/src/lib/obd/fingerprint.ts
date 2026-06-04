@@ -2,6 +2,7 @@ import type { VehicleFingerprint } from '../../types/domain';
 import { normalizeHex } from './pids';
 
 const wmiMap: Record<string, { make: string; country: string }> = {
+  '8AF': { make: 'Ford', country: 'Argentina' },
   '9BF': { make: 'Ford', country: 'Brasil' },
   '1FA': { make: 'Ford', country: 'Estados Unidos' },
   '1FB': { make: 'Ford', country: 'Estados Unidos' },
@@ -63,7 +64,7 @@ export function buildFingerprint(raw: VehicleFingerprint['raw']): VehicleFingerp
 }
 
 export function parseVin(rawResponse?: string) {
-  const text = parseAsciiFields(rawResponse, '49', '02').join('');
+  const text = parseAsciiPayload(rawResponse, '49', '02');
   const vin = text.replace(/[^A-HJ-NPR-Z0-9]/gi, '').toUpperCase();
 
   if (vin.length >= 17) {
@@ -97,27 +98,25 @@ function inferMakeFromText(values: string[]) {
 }
 
 function parseAsciiFields(rawResponse: string | undefined, mode: string, pid: string) {
+  const text = parseAsciiPayload(rawResponse, mode, pid);
+
+  return text ? [text] : [];
+}
+
+function parseAsciiPayload(rawResponse: string | undefined, mode: string, pid: string) {
   const bytes = normalizeHex(rawResponse ?? '');
-  const chunks: string[] = [];
+  const start = bytes.findIndex((byte, index) => byte.toUpperCase() === mode && bytes[index + 1]?.toUpperCase() === pid);
 
-  for (let index = 0; index < bytes.length - 2; index += 1) {
-    if (bytes[index].toUpperCase() !== mode || bytes[index + 1].toUpperCase() !== pid) {
-      continue;
-    }
-
-    const data = bytes.slice(index + 3);
-    const text = data
-      .map((byte) => String.fromCharCode(Number.parseInt(byte, 16)))
-      .join('')
-      .replace(/[^\x20-\x7E]/g, '')
-      .trim();
-
-    if (text) {
-      chunks.push(text);
-    }
+  if (start < 0) {
+    return '';
   }
 
-  return [...new Set(chunks)];
+  return bytes
+    .slice(start + 3)
+    .map((byte) => String.fromCharCode(Number.parseInt(byte, 16)))
+    .join('')
+    .replace(/[^\x20-\x7E]/g, '')
+    .trim();
 }
 
 function parseHexFields(rawResponse: string | undefined, mode: string, pid: string) {

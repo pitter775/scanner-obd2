@@ -5,11 +5,12 @@ import { colors, spacing } from '../config/theme';
 
 type AppButtonProps = PropsWithChildren<{
   onPress: () => void;
+  icon?: string;
   tone?: 'primary' | 'secondary' | 'danger';
   disabled?: boolean;
 }>;
 
-export function AppButton({ children, onPress, tone = 'primary', disabled }: AppButtonProps) {
+export function AppButton({ children, icon, onPress, tone = 'primary', disabled }: AppButtonProps) {
   return (
     <Pressable
       disabled={disabled}
@@ -21,7 +22,7 @@ export function AppButton({ children, onPress, tone = 'primary', disabled }: App
         pressed && !disabled && styles.pressed,
       ]}
     >
-      <Text style={styles.label}>{children}</Text>
+      <Text adjustsFontSizeToFit numberOfLines={1} style={styles.label}>{icon ? `${icon}  ` : ''}{children}</Text>
     </Pressable>
   );
 }

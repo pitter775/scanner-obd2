@@ -56,6 +56,54 @@ export const obdPids: ObdPid[] = [
     unit: 'V',
     decode: ([a = 0, b = 0]) => ((a * 256) + b) / 1000,
   },
+  {
+    pid: '0110',
+    name: 'Fluxo de ar',
+    unit: 'g/s',
+    decode: ([a = 0, b = 0]) => ((a * 256) + b) / 100,
+  },
+  {
+    pid: '011F',
+    name: 'Tempo ligado',
+    unit: 's',
+    decode: ([a = 0, b = 0]) => (a * 256) + b,
+  },
+  {
+    pid: '0121',
+    name: 'Distancia com falha',
+    unit: 'km',
+    decode: ([a = 0, b = 0]) => (a * 256) + b,
+  },
+  {
+    pid: '0130',
+    name: 'Warm-ups sem apagar',
+    unit: 'ciclos',
+    decode: ([a = 0]) => a,
+  },
+  {
+    pid: '0131',
+    name: 'Distancia sem apagar',
+    unit: 'km',
+    decode: ([a = 0, b = 0]) => (a * 256) + b,
+  },
+  {
+    pid: '0133',
+    name: 'Pressao barometrica',
+    unit: 'kPa',
+    decode: ([a = 0]) => a,
+  },
+  {
+    pid: '013C',
+    name: 'Temperatura catalisador B1S1',
+    unit: 'C',
+    decode: ([a = 0, b = 0]) => (((a * 256) + b) / 10) - 40,
+  },
+  {
+    pid: '013E',
+    name: 'Temperatura catalisador B1S2',
+    unit: 'C',
+    decode: ([a = 0, b = 0]) => (((a * 256) + b) / 10) - 40,
+  },
 ];
 
 export function getPid(pid: string) {

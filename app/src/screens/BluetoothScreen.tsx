@@ -1,5 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton } from '../components/AppButton';
@@ -7,7 +8,7 @@ import { ConnectionGauge } from '../components/ConnectionGauge';
 import { Panel } from '../components/Panel';
 import { Screen } from '../components/Screen';
 import { colors, spacing } from '../config/theme';
-import { listPairedDevices, obdBluetoothErrorMessage, testAdapterHandshake } from '../services/bluetoothService';
+import { listAvailableDevices, listPairedDevices, obdBluetoothErrorMessage, pairBluetoothDevice, testAdapterHandshake } from '../services/bluetoothService';
 import { recordDiagnosticEvent, shareDiagnosticReport } from '../services/diagnosticLog';
 import { useAppStore } from '../store/appStore';
 import type { BluetoothDeviceInfo } from '../types/domain';
@@ -21,10 +22,22 @@ export function BluetoothScreen({ navigation }: Props) {
   const setActiveAdapter = useAppStore((state) => state.setActiveAdapter);
   const setConnectionReady = useAppStore((state) => state.setConnectionReady);
   const [devices, setDevices] = useState<BluetoothDeviceInfo[]>([]);
+  const [availableDevices, setAvailableDevices] = useState<BluetoothDeviceInfo[]>([]);
   const [consoleLines, setConsoleLines] = useState<string[]>([]);
+  const [lastAdapter, setLastAdapter] = useState<BluetoothDeviceInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [connectingDeviceId, setConnectingDeviceId] = useState<string | null>(null);
   const [status, setStatus] = useState('Busque e conecte o SP359 antes de continuar.');
+
+  useEffect(() => {
+    AsyncStorage.getItem('last-obd-adapter')
+      .then((value) => {
+        if (value) {
+          setLastAdapter(JSON.parse(value) as BluetoothDeviceInfo);
+        }
+      })
+      .catch((error) => recordDiagnosticEvent('warn', 'Falha ao carregar ultimo adaptador', error));
+  }, []);
 
   async function loadDevices() {
     setLoading(true);
@@ -43,6 +56,39 @@ export function BluetoothScreen({ navigation }: Props) {
     }
   }
 
+  async function discoverDevices() {
+    setLoading(true);
+    appendConsole('Buscando dispositivos proximos');
+    try {
+      const nextDevices = await listAvailableDevices();
+      setAvailableDevices(sortObdCandidates(nextDevices));
+      appendConsole(`Disponiveis: ${nextDevices.length}`);
+      setStatus(nextDevices.length ? 'Toque no OBDII para parear. Depois toque nele em pareados para conectar.' : 'Nenhum dispositivo novo encontrado.');
+    } catch (error) {
+      appendConsole(`Erro ao buscar proximos: ${errorMessage(error)}`);
+      recordDiagnosticEvent('error', 'Falha ao buscar dispositivos Bluetooth proximos', error);
+      setStatus(bluetoothErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function pairDevice(device: BluetoothDeviceInfo) {
+    setLoading(true);
+    appendConsole(`Pareando ${device.name} (${device.address})`);
+    try {
+      await pairBluetoothDevice(device.address);
+      appendConsole('Pareado. Atualizando lista de pareados.');
+      await loadDevices();
+    } catch (error) {
+      appendConsole(`Erro ao parear: ${errorMessage(error)}`);
+      recordDiagnosticEvent('error', `Falha ao parear ${device.name}`, error);
+      setStatus(errorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function connectDevice(device: BluetoothDeviceInfo) {
     setLoading(true);
     setConnectingDeviceId(device.id);
@@ -55,6 +101,8 @@ export function BluetoothScreen({ navigation }: Props) {
       const response = await testAdapterHandshake(device.address, appendConsole);
       setActiveAdapter(device);
       setConnectionReady(true);
+      setLastAdapter(device);
+      await AsyncStorage.setItem('last-obd-adapter', JSON.stringify(device));
       setStatus(`${device.name} conectado. Resposta: ${response.slice(0, 40)}`);
       navigation.replace('Home');
     } catch (error) {
@@ -78,11 +126,35 @@ export function BluetoothScreen({ navigation }: Props) {
         </Text>
       </Panel>
 
-      <Panel subtitle="Pareie o SP359 nas configuracoes do Android antes de buscar. Depois selecione o SP359 aqui para validar a conexao." title="Dispositivos pareados">
+      {lastAdapter ? (
+        <Panel subtitle="Usa o ultimo scanner que funcionou, sem procurar de novo." title="Conexao rapida">
+          <Text style={styles.value}>{lastAdapter.name}</Text>
+          <Text style={styles.muted}>{lastAdapter.address}</Text>
+          <AppButton disabled={loading} icon="▶" onPress={() => connectDevice(lastAdapter)}>Conectar ultimo scanner</AppButton>
+        </Panel>
+      ) : null}
+
+      <Panel subtitle="1. Busque proximos. 2. Pareie o OBDII. 3. Toque nele em pareados para conectar e validar." title="Conectar scanner">
         <ConnectionGauge active={loading} label={connectingDeviceId ? 'Validando resposta do adaptador...' : 'Buscando dispositivos pareados...'} />
-        <AppButton disabled={loading} onPress={loadDevices}>Buscar dispositivos</AppButton>
-        <AppButton disabled={loading} onPress={shareDiagnosticReport} tone="secondary">Compartilhar relatorio</AppButton>
-        <AppButton disabled={loading} onPress={() => navigation.navigate('Debug')} tone="secondary">Abrir debug</AppButton>
+        <AppButton disabled={loading} icon="+" onPress={discoverDevices}>Buscar novos</AppButton>
+        <AppButton disabled={loading} icon="↻" onPress={loadDevices} tone="secondary">Atualizar pareados</AppButton>
+        <AppButton disabled={loading} icon="⇪" onPress={shareDiagnosticReport} tone="secondary">Compartilhar relatorio</AppButton>
+        <AppButton disabled={loading} icon="i" onPress={() => navigation.navigate('Debug')} tone="secondary">Abrir debug</AppButton>
+        {availableDevices.length ? (
+          <View style={styles.group}>
+            <Text style={styles.sectionLabel}>Disponiveis para parear</Text>
+            {availableDevices.map((device) => (
+              <Pressable key={device.id} onPress={() => pairDevice(device)} style={styles.device}>
+                <View>
+                  <Text style={styles.value}>{device.name}</Text>
+                  <Text style={styles.muted}>{device.address}</Text>
+                  <Text style={styles.hint}>Toque para parear</Text>
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+        <Text style={styles.sectionLabel}>Pareados</Text>
         {devices.map((device) => (
           <Pressable key={device.id} onPress={() => connectDevice(device)} style={[styles.device, activeAdapter?.id === device.id && styles.selectedDevice]}>
             <View>
@@ -163,6 +235,15 @@ const styles = StyleSheet.create({
   },
   selectedDevice: {
     borderColor: colors.primary,
+  },
+  group: {
+    gap: spacing.sm,
+  },
+  sectionLabel: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '900',
+    textTransform: 'uppercase',
   },
   value: {
     color: colors.text,
