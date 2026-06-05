@@ -9,4 +9,6 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v56.0.0/ before 
 - Adaptador real validado: `OBDII (00:10:CC:4F:36:03)`, Bluetooth classico/SPP, ELM327 v1.5.
 - Dashboard deve priorizar realtime sem intervalo fixo visivel, visual preto/neon animado forte, graficos vivos e relatorio com respostas OBD2 brutas; animacao continua deve ser evitada durante leitura.
 - Layout deve funcionar tambem em Android/tablet de carro na horizontal.
+- Em realtime, `CAN ERROR` repetido indica comandos muito colados; manter pequeno intervalo entre PIDs e desacelerar ao detectar erro.
+- Busca de imagem para Ford Focus 2006 deve incluir `brasileiro` para evitar resultado europeu.
 - Tela Bluetooth deve manter pareamento pratico, conexao rapida com ultimo scanner funcional e textos objetivos.

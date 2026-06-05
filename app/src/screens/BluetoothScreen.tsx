@@ -77,9 +77,14 @@ export function BluetoothScreen({ navigation }: Props) {
     setLoading(true);
     appendConsole(`Pareando ${device.name} (${device.address})`);
     try {
-      await pairBluetoothDevice(device.address);
-      appendConsole('Pareado. Atualizando lista de pareados.');
+      const paired = await pairBluetoothDevice(device.address);
+      appendConsole('Pareado. Conectando agora.');
       await loadDevices();
+      await connectDevice({
+        id: paired.id || device.id,
+        name: paired.name || device.name,
+        address: paired.address || device.address,
+      });
     } catch (error) {
       appendConsole(`Erro ao parear: ${errorMessage(error)}`);
       recordDiagnosticEvent('error', `Falha ao parear ${device.name}`, error);
@@ -130,15 +135,15 @@ export function BluetoothScreen({ navigation }: Props) {
         <Panel subtitle="Usa o ultimo scanner que funcionou, sem procurar de novo." title="Conexao rapida">
           <Text style={styles.value}>{lastAdapter.name}</Text>
           <Text style={styles.muted}>{lastAdapter.address}</Text>
-          <AppButton disabled={loading} icon="▶" onPress={() => connectDevice(lastAdapter)}>Conectar ultimo scanner</AppButton>
+          <AppButton disabled={loading} icon=">" onPress={() => connectDevice(lastAdapter)}>Conectar ultimo scanner</AppButton>
         </Panel>
       ) : null}
 
       <Panel subtitle="1. Busque proximos. 2. Pareie o OBDII. 3. Toque nele em pareados para conectar e validar." title="Conectar scanner">
         <ConnectionGauge active={loading} label={connectingDeviceId ? 'Validando resposta do adaptador...' : 'Buscando dispositivos pareados...'} />
         <AppButton disabled={loading} icon="+" onPress={discoverDevices}>Buscar novos</AppButton>
-        <AppButton disabled={loading} icon="↻" onPress={loadDevices} tone="secondary">Atualizar pareados</AppButton>
-        <AppButton disabled={loading} icon="⇪" onPress={shareDiagnosticReport} tone="secondary">Compartilhar relatorio</AppButton>
+        <AppButton disabled={loading} icon="R" onPress={loadDevices} tone="secondary">Atualizar pareados</AppButton>
+        <AppButton disabled={loading} icon="S" onPress={shareDiagnosticReport} tone="secondary">Compartilhar relatorio</AppButton>
         <AppButton disabled={loading} icon="i" onPress={() => navigation.navigate('Debug')} tone="secondary">Abrir debug</AppButton>
         {availableDevices.length ? (
           <View style={styles.group}>

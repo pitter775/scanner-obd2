@@ -21,15 +21,15 @@ export function Panel({ children, title, subtitle }: PanelProps) {
 const styles = StyleSheet.create({
   panel: {
     backgroundColor: colors.panel,
-    borderColor: colors.borderStrong,
+    borderColor: colors.border,
     borderRadius: 8,
     borderWidth: 1,
     padding: spacing.md,
     shadowColor: colors.primaryGlow,
     shadowOffset: { height: 0, width: 0 },
-    shadowOpacity: 0.22,
-    shadowRadius: 10,
-    elevation: 3,
+    shadowOpacity: 0.10,
+    shadowRadius: 5,
+    elevation: 1,
   },
   title: {
     color: colors.text,

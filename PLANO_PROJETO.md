@@ -536,6 +536,13 @@ Pagamento pode ser analisado depois com Mercado Pago, Stripe ou assinatura pela 
 - Realtime ajustado para priorizar PIDs rapidos: RPM, velocidade, carga e borboleta passam a atualizar em ciclo curto; sensores lentos entram em ciclos alternados.
 - Animacoes continuas foram removidas de botoes/cards; agora ficam estaticas ou disparam apenas em press/leitura, reduzindo custo no Dashboard.
 - Dashboard ganhou gauge dedicado para RPM, aviso para ligar o carro, hero menor em modo compacto e menu inferior sem Inicio.
+- Realtime recebeu intervalo curto entre comandos e backoff ao detectar `CAN ERROR`, evitando martelar o ELM/ECU.
+- Controles do Dashboard foram compactados em uma faixa sem titulo/borda pesada, com botoes lado a lado e sem botoes manuais de VIN/opcoes.
+- VIN/fingerprint passa a ser tentado automaticamente ao iniciar leitura/realtime.
+- Tela Bluetooth agora tenta conectar automaticamente apos parear dispositivo novo.
+- Header nativo foi ocultado para ganhar altura util na tela.
+- Menu inferior ficou apenas com textos pequenos, sem iniciais/icones.
+- Busca da imagem do carro inclui `brasileiro` para reduzir resultados europeus.
 - APK release local gerado em `C:\Projetos\scanner-obd2-mobile\scanner-obd2-release.apk`; APK debug antigo removido.
 - Node portatil `v20.20.2` e Android SDK local instalados em `.tools/` para viabilizar build local.
 - Documentacao criada em `README.md`, `supabase/README.md`, `docs/architecture.md`, `docs/roadmap.md` e `docs/obd2/elm327.md`.

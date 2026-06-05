@@ -33,7 +33,6 @@ export function DashboardScreen() {
   const [loadingLabel, setLoadingLabel] = useState('Conectando ao adaptador OBD2...');
   const [statusMessage, setStatusMessage] = useState('');
   const [liveRunning, setLiveRunning] = useState(false);
-  const [showOptions, setShowOptions] = useState(false);
   const [controlsExpanded, setControlsExpanded] = useState(false);
   const liveConnectionRef = useRef<BluetoothConnection | null>(null);
   const liveSessionIdRef = useRef<string | null>(null);
@@ -62,6 +61,9 @@ export function DashboardScreen() {
       const connection = await getSharedConnection(activeAdapter.address);
       const obd = new ObdService(connection, appendCommunicationLog);
       await obd.initialize();
+      if (!fingerprint) {
+        setFingerprint(await obd.identifyVehicleFast());
+      }
       const nextReadings = await obd.readLiveData((reading) => setReadings(upsertReading(useAppStore.getState().readings, reading)));
       setReadings(nextReadings);
       (await obd.readRawSnapshot()).forEach(appendObdRawResponse);
@@ -132,6 +134,9 @@ export function DashboardScreen() {
       liveConnectionRef.current = connection;
       const obd = new ObdService(connection);
       await obd.initialize();
+      if (!fingerprint) {
+        setFingerprint(await obd.identifyVehicleFast());
+      }
       appendCommunicationLog('Realtime iniciado: log bruto completo fica no relatorio/debug.');
 
       if (isCloudSyncEnabled) {
@@ -181,27 +186,24 @@ export function DashboardScreen() {
   return (
     <Screen>
       <View style={[styles.topLayout, isWide && styles.topLayoutWide]}>
-        <View style={isWide ? styles.topColumnWide : undefined}>
-          <VehicleHero compact={compactControls} vehicle={activeVehicle} />
+        <View style={isWide ? styles.topImageColumnWide : undefined}>
+          <VehicleHero compact={compactControls} fingerprint={fingerprint} vehicle={activeVehicle} />
         </View>
-        <View style={isWide ? styles.topColumnWide : undefined}>
-          <Panel title="Leitura em tempo real">
+        <View style={isWide ? styles.topControlsColumnWide : undefined}>
+          <View style={styles.controlStrip}>
             {!compactControls ? <ConnectionGauge active={loading} label={loadingLabel} moduleName={activeAdapter?.name ?? 'OBDII'} /> : null}
             {statusMessage ? <Text style={styles.statusMessage}>{statusMessage}</Text> : null}
-            <View style={[styles.actionGrid, isWide && styles.actionGridWide]}>
-              <AppButton disabled={loading} icon="*" onPress={startDiagnostic}>Ler agora</AppButton>
+            <View style={styles.actionGrid}>
+              <AppButton compact disabled={loading} icon="*" onPress={startDiagnostic}>Ler</AppButton>
               <AppButton disabled={loading && !liveRunning} icon={liveRunning ? '[]' : '>'} onPress={liveRunning ? stopLiveDiagnostic : startLiveDiagnostic} tone={liveRunning ? 'danger' : 'secondary'}>
                 {liveRunning ? 'Parar realtime' : 'Realtime'}
               </AppButton>
-              <AppButton disabled={loading} icon="VIN" onPress={identifyVehicle} tone="secondary">Identificar</AppButton>
-              <AppButton disabled={loading} icon={showOptions ? '-' : '+'} onPress={() => setShowOptions((value) => !value)} tone="secondary">Opcoes</AppButton>
-              <AppButton disabled={loading} icon={controlsExpanded ? '-' : '+'} onPress={() => setControlsExpanded((value) => !value)} tone="secondary">
+              <AppButton compact disabled={loading} icon={controlsExpanded ? '-' : '+'} onPress={() => setControlsExpanded((value) => !value)} tone="secondary">
                 {controlsExpanded ? 'Reduzir' : 'Expandir'}
               </AppButton>
             </View>
-            {showOptions ? <Text style={styles.muted}>Realtime sem intervalo fixo: cada sensor atualiza assim que a ECU responde. Layout adapta para tablet horizontal.</Text> : null}
             {!readings.length ? <Text style={styles.engineHint}>Ligue o carro. Alguns sensores so respondem com o motor ligado ou chave em ignicao.</Text> : null}
-          </Panel>
+          </View>
         </View>
       </View>
 
@@ -227,21 +229,27 @@ export function DashboardScreen() {
 }
 
 function FingerprintPanel({ compact, fingerprint }: { compact: boolean; fingerprint: VehicleFingerprint }) {
+  if (compact) {
+    return (
+      <View style={styles.fingerprintStrip}>
+        <Text style={styles.fingerprintStripText}>
+          {fingerprint.vin ? `VIN ${fingerprint.vin}` : `Protocolo ${fingerprint.protocol ?? 'nao identificado'}`}
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <Panel title="Filtro do veiculo">
       <Text style={styles.fingerprintMain}>
         {fingerprint.likelyMake ?? 'Marca nao identificada'}
         {fingerprint.likelyYear ? ` - ${fingerprint.likelyYear}` : ''}
       </Text>
-      {compact ? <Text style={styles.muted}>{fingerprint.vin ? `VIN: ${fingerprint.vin}` : `Protocolo: ${fingerprint.protocol ?? 'nao identificado'}`}</Text> : (
-        <>
-          <Text style={styles.muted}>Confianca: {confidenceLabel[fingerprint.confidence]}</Text>
-          {fingerprint.vin ? <Text style={styles.muted}>VIN/chassi: {fingerprint.vin}</Text> : null}
-          {fingerprint.protocol ? <Text style={styles.muted}>Protocolo: {fingerprint.protocol}</Text> : null}
-          {fingerprint.calibrationIds.length ? <Text style={styles.muted}>Calibracao: {fingerprint.calibrationIds.join(', ')}</Text> : null}
-          {fingerprint.ecuNames.length ? <Text style={styles.muted}>ECU: {fingerprint.ecuNames.join(', ')}</Text> : null}
-        </>
-      )}
+      <Text style={styles.muted}>Confianca: {confidenceLabel[fingerprint.confidence]}</Text>
+      {fingerprint.vin ? <Text style={styles.muted}>VIN/chassi: {fingerprint.vin}</Text> : null}
+      {fingerprint.protocol ? <Text style={styles.muted}>Protocolo: {fingerprint.protocol}</Text> : null}
+      {fingerprint.calibrationIds.length ? <Text style={styles.muted}>Calibracao: {fingerprint.calibrationIds.join(', ')}</Text> : null}
+      {fingerprint.ecuNames.length ? <Text style={styles.muted}>ECU: {fingerprint.ecuNames.join(', ')}</Text> : null}
     </Panel>
   );
 }
@@ -328,9 +336,13 @@ function RpmGauge({ compact, reading }: { compact: boolean; reading: ObdReading 
   );
 }
 
-function VehicleHero({ compact, vehicle }: { compact: boolean; vehicle?: Vehicle }) {
-  const title = vehicle ? `${vehicle.make} ${vehicle.model} ${vehicle.year}` : 'Veiculo nao identificado';
-  const query = vehicle ? `${title} Brasil antigo foto lateral` : 'car dashboard obd2 scanner';
+function VehicleHero({ compact, fingerprint, vehicle }: { compact: boolean; fingerprint?: VehicleFingerprint; vehicle?: Vehicle }) {
+  const title = vehicle && vehicle.id !== defaultVehicle.id
+    ? `${vehicle.make} ${vehicle.model} ${vehicle.year}`
+    : fingerprint?.likelyMake && fingerprint.likelyYear
+      ? `${fingerprint.likelyMake} ${fingerprint.likelyYear}`
+      : 'Veiculo nao identificado';
+  const query = title.includes('Veiculo nao identificado') ? 'car dashboard obd2 scanner' : `${title} brasileiro foto lateral`;
   const imageUrl = `https://tse1.mm.bing.net/th?q=${encodeURIComponent(query)}`;
 
   return (
@@ -347,15 +359,12 @@ function VehicleHero({ compact, vehicle }: { compact: boolean; vehicle?: Vehicle
 
 const styles = StyleSheet.create({
   actionGrid: {
-    gap: spacing.sm,
-  },
-  actionGridWide: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    gap: spacing.xs,
   },
   card: {
     backgroundColor: colors.panel,
-    borderColor: colors.borderStrong,
+    borderColor: colors.border,
     borderRadius: 8,
     borderWidth: 1,
     minHeight: 142,
@@ -363,9 +372,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     shadowColor: colors.primaryGlow,
     shadowOffset: { height: 0, width: 0 },
-    shadowOpacity: 0.28,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 1,
   },
   cardHalo: {
     backgroundColor: colors.primary,
@@ -440,26 +449,39 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '900',
   },
+  fingerprintStrip: {
+    backgroundColor: colors.panel,
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  fingerprintStripText: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '800',
+  },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
   hero: {
-    aspectRatio: 16 / 9,
+    aspectRatio: 21 / 9,
     backgroundColor: colors.panel,
-    borderColor: colors.borderStrong,
+    borderColor: colors.border,
     borderRadius: 8,
     borderWidth: 1,
     overflow: 'hidden',
     shadowColor: colors.electric,
     shadowOffset: { height: 0, width: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 14,
-    elevation: 4,
+    shadowOpacity: 0.10,
+    shadowRadius: 6,
+    elevation: 1,
   },
   heroCompact: {
-    aspectRatio: 21 / 9,
+    aspectRatio: 28 / 9,
   },
   heroGlow: {
     backgroundColor: colors.primary,
@@ -533,7 +555,7 @@ const styles = StyleSheet.create({
   },
   rpmGauge: {
     backgroundColor: colors.background,
-    borderColor: colors.primaryGlow,
+    borderColor: colors.borderStrong,
     borderRadius: 8,
     borderWidth: 1,
     minHeight: 180,
@@ -541,9 +563,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     shadowColor: colors.primaryGlow,
     shadowOffset: { height: 0, width: 0 },
-    shadowOpacity: 0.36,
-    shadowRadius: 16,
-    elevation: 5,
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    elevation: 2,
   },
   rpmGaugePhone: {
     flexBasis: '100%',
@@ -604,12 +626,23 @@ const styles = StyleSheet.create({
   topColumnWide: {
     flex: 1,
   },
+  topControlsColumnWide: {
+    flex: 0.8,
+  },
+  topImageColumnWide: {
+    flex: 1.2,
+  },
   topLayout: {
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   topLayoutWide: {
     alignItems: 'stretch',
     flexDirection: 'row',
+  },
+  controlStrip: {
+    backgroundColor: 'transparent',
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
   },
   track: {
     backgroundColor: colors.panelSoft,

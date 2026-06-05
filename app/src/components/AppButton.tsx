@@ -62,8 +62,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     paddingHorizontal: spacing.md,
     shadowColor: colors.primaryGlow,
-    shadowOpacity: 0.55,
-    shadowRadius: 12,
+    shadowOpacity: 0.22,
+    shadowRadius: 6,
     shadowOffset: { height: 0, width: 0 },
     elevation: 6,
   },
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
   },
   secondary: {
     backgroundColor: colors.panel,
-    borderColor: colors.borderStrong,
+    borderColor: colors.border,
   },
   danger: {
     backgroundColor: colors.dangerDark,

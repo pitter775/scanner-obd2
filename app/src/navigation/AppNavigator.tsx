@@ -20,6 +20,7 @@ export function AppNavigator() {
       initialRouteName="Login"
       screenOptions={{
         contentStyle: { backgroundColor: colors.background },
+        headerShown: false,
         headerStyle: { backgroundColor: colors.background },
         headerTintColor: colors.text,
         headerTitleStyle: { fontSize: 16, fontWeight: '800' },

@@ -87,6 +87,7 @@
 - O ultimo adaptador que funcionou fica salvo localmente para conexao rapida.
 - Dashboard e DTC usam a conexao compartilhada para evitar reconectar e fechar socket a cada leitura.
 - Realtime do Dashboard nao deve usar intervalo fixo visivel; atualizar cada sensor assim que a ECU responder.
+- Se o relatorio mostrar `CAN ERROR` em sequencia, o realtime esta agressivo demais; manter pausa curta entre comandos e desacelerar ao detectar erro de barramento.
 - Relatorio deve manter respostas OBD2 brutas, logs de TX/RX e eventos para diagnostico.
 - Erros nativos como `read failed`, `socket might closed`, `timeout`, `BLUETOOTH_CONNECT` devem ser traduzidos para portugues antes de aparecer para o usuario.
 - Evitar Alert nativo feio em erros de scanner; preferir mensagem dentro da tela.
@@ -116,3 +117,4 @@
 - O app deve suportar celular em retrato e Android/tablet do carro em paisagem.
 - Fluxo de veiculo: tentar VIN via OBD2 primeiro; se nao vier, usar filtro marca -> modelo -> ano/versao.
 - Foto do carro: buscar dinamicamente por Bing/Google/API equivalente apenas para exibicao no app, sem salvar imagem no banco.
+- Para Ford Focus 2006, incluir `brasileiro` na busca da imagem para evitar modelo europeu.

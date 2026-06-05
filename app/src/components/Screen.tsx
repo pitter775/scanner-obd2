@@ -35,18 +35,18 @@ export function Screen({ children, scroll = true }: ScreenProps) {
 
 function BottomNav({ activeRoute, navigate }: { activeRoute: string; navigate: (name: string) => void }) {
   const items = [
-    ['Bluetooth', 'B', 'BT'],
-    ['Dashboard', 'D', 'Dash'],
-    ['Diagnostics', '!', 'DTC'],
-    ['Vehicles', 'C', 'Carro'],
-    ['Debug', 'i', 'Debug'],
+    ['Bluetooth', 'BT'],
+    ['Dashboard', 'Dash'],
+    ['Diagnostics', 'DTC'],
+    ['Vehicles', 'Carro'],
+    ['Debug', 'Debug'],
   ];
 
   return (
     <View style={styles.bottomNav}>
-      {items.map(([name, icon, label]) => (
+      {items.map(([name, label]) => (
         <View key={name} style={styles.navItem}>
-          <AppButton compact icon={icon} onPress={() => navigate(name)} tone={activeRoute === name ? 'primary' : 'secondary'}>
+          <AppButton compact onPress={() => navigate(name)} tone={activeRoute === name ? 'primary' : 'secondary'}>
             {label}
           </AppButton>
         </View>

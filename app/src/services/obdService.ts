@@ -5,6 +5,7 @@ import type { DtcCode, ObdReading, VehicleFingerprint } from '../types/domain';
 import { BluetoothConnection, normalizeElmResponse, sendElmCommand } from './bluetoothService';
 
 const initCommands = ['ATZ', 'ATE0', 'ATL0', 'ATS0', 'ATH0', 'ATSP0'];
+const commandGapMs = 95;
 
 export class ObdService {
   constructor(
@@ -40,26 +41,49 @@ export class ObdService {
     });
   }
 
+  async identifyVehicleFast(): Promise<VehicleFingerprint> {
+    return buildFingerprint({
+      calibrationId: '',
+      cvn: '',
+      ecuName: '',
+      protocol: await this.sendCommand('ATDPN'),
+      supportedPids01: await this.sendCommand('0100'),
+      supportedPids21: await this.sendCommand('0120'),
+      vin: await this.sendCommand('0902'),
+    });
+  }
+
   async readLiveData(onReading?: (reading: ObdReading) => void): Promise<ObdReading[]> {
     return this.readPidGroup(obdPids, onReading, 2600);
   }
 
   async readRealtimeFrame(frameIndex: number, onReading?: (reading: ObdReading) => void): Promise<ObdReading[]> {
-    const pids = frameIndex % 4 === 0 ? [...realtimeFastPids, ...realtimeSlowPids] : realtimeFastPids;
-    return this.readPidGroup(pids, onReading, 1400);
+    const pids = frameIndex % 6 === 0 ? [...realtimeFastPids, ...realtimeSlowPids] : realtimeFastPids;
+    return this.readPidGroup(pids, onReading, 1800);
   }
 
   private async readPidGroup(pids: ObdPid[], onReading: ((reading: ObdReading) => void) | undefined, timeoutMs: number) {
     const readings: ObdReading[] = [];
+    let canErrorStreak = 0;
 
     for (const pid of pids) {
-      const raw = await this.sendCommand(pid.pid, timeoutMs, { idleMs: 120, pollMs: 35 });
+      const raw = await this.sendCommand(pid.pid, timeoutMs, { idleMs: 180, pollMs: 45 });
+
+      if (/CAN ERROR|BUS ERROR|BUFFER FULL/i.test(raw)) {
+        canErrorStreak += 1;
+        await delay(canErrorStreak > 1 ? 420 : 220);
+        continue;
+      }
+
+      canErrorStreak = 0;
       const parsed = parsePidResponse(pid.pid, raw);
 
       if (parsed) {
         readings.push(parsed);
         onReading?.(parsed);
       }
+
+      await delay(commandGapMs);
     }
 
     return readings;
@@ -98,4 +122,10 @@ export class ObdService {
     this.onLog?.(`< ${response || 'sem resposta'}`);
     return response;
   }
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
