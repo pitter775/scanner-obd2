@@ -18,7 +18,7 @@ export function AccountScreen() {
       </Panel>
 
       <Panel title="Sessao">
-        <AppButton onPress={signOut} tone="secondary">Sair</AppButton>
+        <AppButton icon="logout" onPress={signOut} tone="secondary">Sair</AppButton>
       </Panel>
     </Screen>
   );

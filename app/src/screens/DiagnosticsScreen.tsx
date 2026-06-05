@@ -29,7 +29,7 @@ export function DiagnosticsScreen() {
     }
 
     if (!activeAdapter) {
-      setStatusMessage('Conecte o SP359 na tela Bluetooth primeiro.');
+      setStatusMessage('Conecte o adaptador OBD2 na tela Bluetooth primeiro.');
       return;
     }
 
@@ -59,7 +59,7 @@ export function DiagnosticsScreen() {
   function confirmClearDtcs() {
     Alert.alert(
       'Apagar falhas',
-      'Apagar DTCs nao corrige a causa do problema. Deseja continuar?',
+      'Apagar DTCs não corrige a causa do problema. Deseja continuar?',
       [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Apagar', style: 'destructive', onPress: clearDtcs },
@@ -69,7 +69,7 @@ export function DiagnosticsScreen() {
 
   async function clearDtcs() {
     if (!activeAdapter) {
-      setStatusMessage('Conecte o SP359 na tela Bluetooth primeiro.');
+      setStatusMessage('Conecte o adaptador OBD2 na tela Bluetooth primeiro.');
       return;
     }
 
@@ -93,10 +93,10 @@ export function DiagnosticsScreen() {
 
   return (
     <Screen>
-      <Panel title="Codigos de falha">
+      <Panel title="Códigos de falha">
         {statusMessage ? <Text style={styles.statusMessage}>{statusMessage}</Text> : null}
-        <AppButton disabled={loading} onPress={readDtcs}>Ler DTCs</AppButton>
-        <AppButton disabled={loading} onPress={confirmClearDtcs} tone="danger">Apagar falhas</AppButton>
+        <AppButton disabled={loading} icon="shield-alert" onPress={readDtcs}>Ler DTCs</AppButton>
+        <AppButton disabled={loading} icon="wrench" onPress={confirmClearDtcs} tone="danger">Apagar falhas</AppButton>
       </Panel>
 
       {dtcs.length ? dtcs.map((dtc) => <DtcCard dtc={dtc} key={`${dtc.status}-${dtc.code}`} />) : (
@@ -108,8 +108,8 @@ export function DiagnosticsScreen() {
 
 const defaultVehicle = {
   id: 'local-unknown-vehicle',
-  make: 'Veiculo',
-  model: 'nao identificado',
+  make: 'Veículo',
+  model: 'não identificado',
   user_id: 'local',
   year: new Date().getFullYear(),
 };

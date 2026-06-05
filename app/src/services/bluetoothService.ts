@@ -85,7 +85,7 @@ export async function pairBluetoothDevice(address: string): Promise<BluetoothDev
   const device = await bluetooth.pairDevice?.(address);
 
   if (!device) {
-    throw new Error('Nao foi possivel parear este dispositivo. Tente parear nas configuracoes do Android.');
+    throw new Error('Não foi possível parear este dispositivo. Tente parear nas configurações do Android.');
   }
 
   return {
@@ -111,13 +111,13 @@ export class BluetoothConnection {
     const selected = devices?.find((device) => device.address === address || device.id === address);
 
     if (!selected?.connect) {
-      throw new Error('Dispositivo Bluetooth nao encontrado ou sem suporte a conexao.');
+      throw new Error('Dispositivo Bluetooth não encontrado ou sem suporte a conexão.');
     }
 
     const connected = await selected.connect(connectionOptions(this.strategy));
 
     if (!connected) {
-      throw new Error('Nao foi possivel abrir o socket Bluetooth do adaptador.');
+      throw new Error('Não foi possível abrir o socket Bluetooth do adaptador.');
     }
 
     this.device = selected;
@@ -131,7 +131,7 @@ export class BluetoothConnection {
 
   async send(command: string) {
     if (!this.device?.write) {
-      throw new Error('Scanner nao conectado.');
+      throw new Error('Scanner não conectado.');
     }
 
     await this.device.write(`${command}\r`);
@@ -143,7 +143,7 @@ export class BluetoothConnection {
 
   async read() {
     if (!this.device?.read) {
-      throw new Error('Scanner nao conectado.');
+      throw new Error('Scanner não conectado.');
     }
 
     return this.device.read();
@@ -218,21 +218,24 @@ type ElmCommandOptions = {
   pollMs?: number;
   settleMs?: number;
   timeoutMs?: number;
+  trace?: boolean;
 };
 
 export async function sendElmCommand(connection: BluetoothConnection, command: string, options: ElmCommandOptions = {}) {
   await connection.clear();
-  recordDiagnosticEvent('info', `RAW TX ${command}`, `strategy=${connection.strategy.label}`);
+  if (options.trace) {
+    recordDiagnosticEvent('info', `RAW TX ${command}`, `strategy=${connection.strategy.label}`);
+  }
   await connection.send(command);
 
   if (options.settleMs) {
     await delay(options.settleMs);
   }
 
-  return readElmResponse(connection, options);
+  return readElmResponse(connection, command, options);
 }
 
-async function readElmResponse(connection: BluetoothConnection, options: ElmCommandOptions) {
+async function readElmResponse(connection: BluetoothConnection, command: string, options: ElmCommandOptions) {
   const timeoutMs = options.timeoutMs ?? 4000;
   const idleMs = options.idleMs ?? 450;
   const pollMs = options.pollMs ?? 120;
@@ -247,7 +250,7 @@ async function readElmResponse(connection: BluetoothConnection, options: ElmComm
       const available = await connection.available();
       const elapsedMs = Date.now() - startedAt;
 
-      if (available > 0 || elapsedMs - lastAvailableLogAt >= 1000) {
+      if (options.trace && (available > 0 || elapsedMs - lastAvailableLogAt >= 1000)) {
         recordDiagnosticEvent('info', 'RAW available', `strategy=${connection.strategy.label}; bytes=${available}; elapsedMs=${elapsedMs}`);
         lastAvailableLogAt = elapsedMs;
       }
@@ -255,10 +258,12 @@ async function readElmResponse(connection: BluetoothConnection, options: ElmComm
       if (available > 0) {
         const chunk = await connection.read();
         response += chunk;
-        recordDiagnosticEvent('info', 'RAW RX chunk', `strategy=${connection.strategy.label}; chunk=${formatRaw(chunk)}; total=${formatRaw(response)}`);
+        if (options.trace) {
+          recordDiagnosticEvent('info', 'RAW RX chunk', `strategy=${connection.strategy.label}; chunk=${formatRaw(chunk)}; total=${formatRaw(response)}`);
+        }
         lastDataAt = Date.now();
 
-        if (response.includes('>')) {
+        if (response.includes('>') || isRealtimePidResponseComplete(command, response)) {
           return response;
         }
       }
@@ -274,11 +279,26 @@ async function readElmResponse(connection: BluetoothConnection, options: ElmComm
   }
 
   if (response.trim()) {
-    recordDiagnosticEvent('info', 'RAW RX final', `strategy=${connection.strategy.label}; response=${formatRaw(response)}`);
+    if (options.trace) {
+      recordDiagnosticEvent('info', 'RAW RX final', `strategy=${connection.strategy.label}; response=${formatRaw(response)}`);
+    }
     return response;
   }
 
   throw lastError instanceof Error ? lastError : new Error('Sem resposta do adaptador dentro do tempo limite.');
+}
+
+function isRealtimePidResponseComplete(command: string, response: string) {
+  if (!/^01[0-9A-F]{2}$/i.test(command)) {
+    return false;
+  }
+
+  const expected = `41${command.slice(2)}`.toUpperCase();
+  const compact = response.replace(/[^0-9A-F]/gi, '').toUpperCase();
+  const start = compact.indexOf(expected);
+  const requiredBytes = ['010C', '0110', '0142'].includes(command.toUpperCase()) ? 2 : 1;
+  return (start >= 0 && compact.length >= start + expected.length + (requiredBytes * 2))
+    || /NO DATA|STOPPED|CAN ERROR|BUS ERROR|BUFFER FULL|UNABLE TO CONNECT/i.test(response);
 }
 
 export function normalizeElmResponse(response: string) {
@@ -303,11 +323,11 @@ export function obdBluetoothErrorMessage(error: unknown) {
   const message = error instanceof Error ? error.message : String(error ?? '');
 
   if (message.includes('Sem resposta') || message.includes('read failed') || message.includes('socket might closed') || message.includes('timeout')) {
-    return 'O Bluetooth conectou, mas o adaptador OBD2 nao respondeu. Confirme se o SP359 esta encaixado no carro, com a chave ligada, e tente novamente.';
+    return 'O Bluetooth conectou, mas o adaptador OBD2 não respondeu. Confirme se o OBDII está encaixado no carro, com a chave ligada, e tente novamente.';
   }
 
   if (message.includes('Permission') || message.includes('BLUETOOTH')) {
-    return 'Permissao Bluetooth pendente. Volte para a tela inicial e toque em Preparar permissoes.';
+    return 'Permissão Bluetooth pendente. Volte para a tela inicial e toque em Preparar permissões.';
   }
 
   return message || 'Falha ao comunicar com o adaptador OBD2.';
@@ -324,7 +344,7 @@ export async function requestBluetoothPermissions() {
   const denied = Object.values(result).some((value) => value !== PermissionsAndroid.RESULTS.GRANTED);
 
   if (denied) {
-    throw new Error('Permita o Bluetooth para o app listar e conectar no SP359.');
+    throw new Error('Permita o Bluetooth para o app listar e conectar no adaptador OBD2.');
   }
 }
 
@@ -337,7 +357,7 @@ export async function ensureBluetoothPermissionsGranted() {
   const statuses = await Promise.all(permissions.map((permission) => PermissionsAndroid.check(permission)));
 
   if (statuses.some((granted) => !granted)) {
-    throw new Error('Permissao Bluetooth pendente. Volte para a tela inicial e toque em Preparar permissoes.');
+    throw new Error('Permissão Bluetooth pendente. Volte para a tela inicial e toque em Preparar permissões.');
   }
 }
 
@@ -379,7 +399,7 @@ async function connectWithStrategies(address: string) {
     }
   }
 
-  throw new Error(errors.join('\n') || 'Nao foi possivel conectar no adaptador.');
+  throw new Error(errors.join('\n') || 'Não foi possível conectar no adaptador.');
 }
 
 async function runElmHandshake(connection: BluetoothConnection, onProgress?: ConnectionProgress) {
@@ -398,7 +418,7 @@ async function runElmHandshake(connection: BluetoothConnection, onProgress?: Con
   for (const [command, options] of commands) {
     try {
       onProgress?.(`Enviando ${command}`);
-      const rawResponse = await sendElmCommand(connection, command, options);
+      const rawResponse = await sendElmCommand(connection, command, { ...options, trace: true });
       const normalizedResponse = normalizeElmResponse(rawResponse);
       responses.push(`${command} RAW: ${formatRaw(rawResponse) || 'sem resposta'}`);
       responses.push(`${command} NORMALIZADO: ${normalizedResponse || 'sem resposta'}`);

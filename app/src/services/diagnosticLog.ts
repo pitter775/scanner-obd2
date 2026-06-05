@@ -1,5 +1,6 @@
 import { Platform, Share } from 'react-native';
 
+import { brand } from '../config/brand';
 import { isCloudSyncEnabled, isSupabaseConfigured } from '../config/env';
 import { type DiagnosticEvent, useAppStore } from '../store/appStore';
 
@@ -62,7 +63,7 @@ function installGlobalErrorDiagnostics() {
 export async function shareDiagnosticReport() {
   await Share.share({
     message: buildDiagnosticReport(),
-    title: 'Relatorio Scanner OBD2',
+    title: `Relatorio ${brand.appName}`,
   });
 }
 
@@ -70,7 +71,7 @@ export function buildDiagnosticReport() {
   const state = useAppStore.getState();
 
   return [
-    'RELATORIO SCANNER OBD2',
+    `RELATORIO ${brand.appName.toUpperCase()}`,
     `Gerado em: ${new Date().toISOString()}`,
     `Plataforma: ${Platform.OS} ${Platform.Version}`,
     `Supabase: ${isSupabaseConfigured ? 'configurado' : 'nao configurado'}`,

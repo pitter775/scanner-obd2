@@ -27,7 +27,7 @@ export function BluetoothScreen({ navigation }: Props) {
   const [lastAdapter, setLastAdapter] = useState<BluetoothDeviceInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [connectingDeviceId, setConnectingDeviceId] = useState<string | null>(null);
-  const [status, setStatus] = useState('Busque e conecte o SP359 antes de continuar.');
+  const [status, setStatus] = useState('Busque e conecte o adaptador OBD2 antes de continuar.');
 
   useEffect(() => {
     AsyncStorage.getItem('last-obd-adapter')
@@ -46,7 +46,7 @@ export function BluetoothScreen({ navigation }: Props) {
       const nextDevices = await listPairedDevices();
       setDevices(sortObdCandidates(nextDevices));
       appendConsole(`Encontrados: ${nextDevices.length}`);
-      setStatus(nextDevices.length ? 'Selecione o SP359 ou o adaptador OBD2 pareado.' : 'Nenhum dispositivo pareado encontrado.');
+      setStatus(nextDevices.length ? 'Selecione o OBDII ou outro adaptador OBD2 pareado.' : 'Nenhum dispositivo pareado encontrado.');
     } catch (error) {
       appendConsole(`Erro ao listar: ${errorMessage(error)}`);
       recordDiagnosticEvent('error', 'Falha ao listar dispositivos Bluetooth', error);
@@ -75,6 +75,7 @@ export function BluetoothScreen({ navigation }: Props) {
 
   async function pairDevice(device: BluetoothDeviceInfo) {
     setLoading(true);
+    setConnectingDeviceId(device.id);
     appendConsole(`Pareando ${device.name} (${device.address})`);
     try {
       const paired = await pairBluetoothDevice(device.address);
@@ -91,6 +92,7 @@ export function BluetoothScreen({ navigation }: Props) {
       setStatus(errorMessage(error));
     } finally {
       setLoading(false);
+      setConnectingDeviceId(null);
     }
   }
 
@@ -123,55 +125,57 @@ export function BluetoothScreen({ navigation }: Props) {
 
   return (
     <Screen>
-      <Panel title="Adaptador ativo">
-        <Text style={styles.value}>{activeAdapter?.name ?? 'Nenhum conectado'}</Text>
-        {activeAdapter?.address ? <Text style={styles.muted}>{activeAdapter.address}</Text> : null}
-        <Text style={connectionReady ? styles.ready : styles.muted}>
-          {connectionReady ? 'Conexao validada' : status}
-        </Text>
-      </Panel>
-
       {lastAdapter ? (
-        <Panel subtitle="Usa o ultimo scanner que funcionou, sem procurar de novo." title="Conexao rapida">
+        <Panel subtitle="Usa o último scanner que funcionou, sem procurar de novo." title="Conexão rápida">
           <Text style={styles.value}>{lastAdapter.name}</Text>
           <Text style={styles.muted}>{lastAdapter.address}</Text>
-          <AppButton disabled={loading} icon=">" onPress={() => connectDevice(lastAdapter)}>Conectar ultimo scanner</AppButton>
+          <AppButton disabled={loading} icon="bluetooth" onPress={() => connectDevice(lastAdapter)}>Conectar ultimo scanner</AppButton>
         </Panel>
       ) : null}
 
-      <Panel subtitle="1. Busque proximos. 2. Pareie o OBDII. 3. Toque nele em pareados para conectar e validar." title="Conectar scanner">
-        <ConnectionGauge active={loading} label={connectingDeviceId ? 'Validando resposta do adaptador...' : 'Buscando dispositivos pareados...'} />
-        <AppButton disabled={loading} icon="+" onPress={discoverDevices}>Buscar novos</AppButton>
-        <AppButton disabled={loading} icon="R" onPress={loadDevices} tone="secondary">Atualizar pareados</AppButton>
-        <AppButton disabled={loading} icon="S" onPress={shareDiagnosticReport} tone="secondary">Compartilhar relatorio</AppButton>
-        <AppButton disabled={loading} icon="i" onPress={() => navigation.navigate('Debug')} tone="secondary">Abrir debug</AppButton>
-        {availableDevices.length ? (
-          <View style={styles.group}>
-            <Text style={styles.sectionLabel}>Disponiveis para parear</Text>
-            {availableDevices.map((device) => (
-              <Pressable key={device.id} onPress={() => pairDevice(device)} style={styles.device}>
-                <View>
-                  <Text style={styles.value}>{device.name}</Text>
-                  <Text style={styles.muted}>{device.address}</Text>
-                  <Text style={styles.hint}>Toque para parear</Text>
-                </View>
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
-        <Text style={styles.sectionLabel}>Pareados</Text>
-        {devices.map((device) => (
-          <Pressable key={device.id} onPress={() => connectDevice(device)} style={[styles.device, activeAdapter?.id === device.id && styles.selectedDevice]}>
-            <View>
-              <Text style={styles.value}>{device.name}</Text>
-              <Text style={styles.muted}>{device.address}</Text>
-              <Text style={styles.hint}>{isLikelyObdDevice(device) ? 'Candidato OBD2' : 'Bluetooth pareado'}</Text>
+      {connectionReady && activeAdapter ? (
+        <Panel subtitle="Conexão validada. O painel já pode ler os sensores em tempo real." title="Scanner conectado">
+          <Text style={styles.value}>{activeAdapter.name}</Text>
+          <Text style={styles.muted}>{activeAdapter.address}</Text>
+        </Panel>
+      ) : (
+        <Panel subtitle="1. Busque proximos. 2. Pareie o OBDII. 3. Toque nele em pareados para conectar e validar." title="Conectar scanner">
+          <ConnectionGauge active={loading} label={connectingDeviceId ? 'Validando resposta do adaptador...' : 'Buscando dispositivos pareados...'} />
+          <Text style={styles.muted}>{status}</Text>
+          <AppButton disabled={loading} icon="search" onPress={discoverDevices}>Buscar novos</AppButton>
+          <AppButton disabled={loading} icon="refresh" onPress={loadDevices} tone="secondary">Atualizar pareados</AppButton>
+          <AppButton disabled={loading} icon="send" onPress={shareDiagnosticReport} tone="secondary">Compartilhar relatório</AppButton>
+          {availableDevices.length ? (
+            <View style={styles.group}>
+              <Text style={styles.sectionLabel}>Disponiveis para parear</Text>
+              {availableDevices.map((device) => (
+                <DeviceCard
+                  actionLabel="Toque para parear"
+                  device={device}
+                  key={device.id}
+                  onPress={() => pairDevice(device)}
+                  working={connectingDeviceId === device.id}
+                  workingLabel="Pareando..."
+                />
+              ))}
             </View>
-          </Pressable>
-        ))}
-      </Panel>
+          ) : null}
+          <Text style={styles.sectionLabel}>Pareados</Text>
+          {devices.map((device) => (
+            <DeviceCard
+              actionLabel={isLikelyObdDevice(device) ? 'Candidato OBD2' : 'Bluetooth pareado'}
+              active={activeAdapter?.id === device.id}
+              device={device}
+              key={device.id}
+              onPress={() => connectDevice(device)}
+              working={connectingDeviceId === device.id}
+              workingLabel="Conectando..."
+            />
+          ))}
+        </Panel>
+      )}
 
-      <Panel title="Console de conexao">
+      <Panel title="Console de conexão">
         {consoleLines.length ? consoleLines.slice(-80).map((line, index) => (
           <Text key={`${line}-${index}`} selectable style={styles.consoleLine}>{line}</Text>
         )) : <Text style={styles.muted}>Nenhuma tentativa registrada.</Text>}
@@ -189,7 +193,7 @@ function bluetoothErrorMessage(error: unknown) {
   const message = errorMessage(error);
 
   if (message.includes('BLUETOOTH_CONNECT') || message.includes('Permission')) {
-    return 'Permissao Bluetooth pendente. Volte para a tela inicial e toque em Preparar permissoes.';
+    return 'Permissão Bluetooth pendente. Volte para a tela inicial e toque em Preparar permissões.';
   }
 
   return message || 'Falha ao listar dispositivos pareados.';
@@ -208,13 +212,104 @@ function isLikelyObdDevice(device: BluetoothDeviceInfo) {
   return name.includes('sp') || name.includes('obd') || name.includes('elm');
 }
 
+function DeviceCard({
+  actionLabel,
+  active,
+  device,
+  onPress,
+  working,
+  workingLabel,
+}: {
+  actionLabel: string;
+  active?: boolean;
+  device: BluetoothDeviceInfo;
+  onPress: () => void;
+  working?: boolean;
+  workingLabel?: string;
+}) {
+  const likelyObd = isLikelyObdDevice(device);
+  const footerLabel = working ? workingLabel ?? 'Conectando...' : active ? 'Conectado' : actionLabel;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.device,
+        likelyObd && styles.obdCandidate,
+        active && styles.selectedDevice,
+        working && styles.workingDevice,
+        pressed && styles.pressedDevice,
+      ]}
+    >
+      <View pointerEvents="none" style={[styles.deviceGlow, likelyObd && styles.obdCandidateGlow, working && styles.workingGlow]} />
+      <View style={styles.deviceHeader}>
+        <View style={styles.deviceText}>
+          <Text style={[styles.value, likelyObd && styles.obdCandidateValue]}>{device.name}</Text>
+          <Text style={styles.muted}>{device.address}</Text>
+        </View>
+        {active ? <Text style={styles.connectedBadge}>OK</Text> : null}
+        {working ? <Text style={styles.workingBadge}>...</Text> : null}
+        {likelyObd && !active && !working ? <Text style={styles.candidateBadge}>OBD2</Text> : null}
+      </View>
+      <Text style={[styles.hint, likelyObd && styles.obdCandidateHint, active && styles.connectedHint, working && styles.workingHint]}>{footerLabel}</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
+  candidateBadge: {
+    backgroundColor: 'rgba(94,234,212,0.16)',
+    borderColor: colors.primaryGlow,
+    borderRadius: 4,
+    borderWidth: 1,
+    color: colors.primaryGlow,
+    fontSize: 11,
+    fontWeight: '900',
+    overflow: 'hidden',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  connectedBadge: {
+    backgroundColor: 'rgba(34,197,94,0.18)',
+    borderColor: colors.success,
+    borderRadius: 4,
+    borderWidth: 1,
+    color: colors.success,
+    fontSize: 11,
+    fontWeight: '900',
+    overflow: 'hidden',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  connectedHint: {
+    color: colors.success,
+  },
   device: {
     backgroundColor: colors.panelSoft,
     borderColor: colors.border,
     borderRadius: 8,
     borderWidth: 1,
+    overflow: 'hidden',
     padding: spacing.md,
+  },
+  deviceGlow: {
+    backgroundColor: colors.electric,
+    height: 96,
+    opacity: 0,
+    position: 'absolute',
+    right: -42,
+    top: -34,
+    transform: [{ rotate: '-18deg' }],
+    width: 96,
+  },
+  deviceHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+    justifyContent: 'space-between',
+  },
+  deviceText: {
+    flex: 1,
   },
   consoleLine: {
     color: colors.muted,
@@ -232,14 +327,58 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 6,
   },
-  ready: {
-    color: colors.success,
-    fontSize: 13,
-    fontWeight: '800',
-    marginTop: spacing.xs,
+  obdCandidate: {
+    backgroundColor: '#102238',
+    borderColor: colors.primaryGlow,
+    shadowColor: colors.primaryGlow,
+    shadowOffset: { height: 0, width: 0 },
+    shadowOpacity: 0.24,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  obdCandidateGlow: {
+    opacity: 0.18,
+  },
+  obdCandidateHint: {
+    color: colors.primaryGlow,
+  },
+  obdCandidateValue: {
+    color: colors.white,
+    textShadowColor: colors.primaryGlow,
+    textShadowOffset: { height: 0, width: 0 },
+    textShadowRadius: 8,
+  },
+  pressedDevice: {
+    backgroundColor: '#16324c',
+    borderColor: colors.electric,
+    transform: [{ scale: 0.985 }],
   },
   selectedDevice: {
-    borderColor: colors.primary,
+    backgroundColor: '#102a25',
+    borderColor: colors.success,
+  },
+  workingBadge: {
+    backgroundColor: 'rgba(245,158,11,0.18)',
+    borderColor: colors.warning,
+    borderRadius: 4,
+    borderWidth: 1,
+    color: colors.warning,
+    fontSize: 11,
+    fontWeight: '900',
+    overflow: 'hidden',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  workingDevice: {
+    backgroundColor: '#2c2415',
+    borderColor: colors.warning,
+  },
+  workingGlow: {
+    backgroundColor: colors.warning,
+    opacity: 0.2,
+  },
+  workingHint: {
+    color: colors.warning,
   },
   group: {
     gap: spacing.sm,

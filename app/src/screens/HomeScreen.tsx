@@ -18,16 +18,16 @@ export function HomeScreen({ navigation }: Props) {
   return (
     <Screen>
       <Panel title="Status">
-        <Info label="Veiculo" value={activeVehicle ? `${activeVehicle.make} ${activeVehicle.model} ${activeVehicle.year}` : 'Nenhum selecionado'} />
+        <Info label="Veículo" value={activeVehicle ? `${activeVehicle.make} ${activeVehicle.model} ${activeVehicle.year}` : 'Nenhum selecionado'} />
         <Info label="Adaptador" value={connectionReady && activeAdapter ? `${activeAdapter.name} conectado` : 'Conecte o adaptador OBD2 primeiro'} />
       </Panel>
 
-      <Panel title="Acoes">
-        <AppButton onPress={() => navigation.navigate('Bluetooth')}>Conectar adaptador OBD2</AppButton>
-        <AppButton disabled={!connectionReady} onPress={() => navigation.navigate('Dashboard')} tone="secondary">Iniciar diagnostico</AppButton>
-        <AppButton disabled={!connectionReady} onPress={() => navigation.navigate('Diagnostics')} tone="secondary">Codigos de falha</AppButton>
-        <AppButton disabled={!connectionReady} onPress={() => navigation.navigate('Vehicles')} tone="secondary">Veiculos</AppButton>
-        <AppButton disabled={!connectionReady} onPress={() => navigation.navigate('Debug')} tone="secondary">Debug</AppButton>
+      <Panel title="Ações">
+        <AppButton icon="bluetooth" onPress={() => navigation.navigate('Bluetooth')}>Conectar adaptador OBD2</AppButton>
+        <AppButton disabled={!connectionReady} icon="gauge" onPress={() => navigation.navigate('Dashboard')} tone="secondary">Iniciar diagnóstico</AppButton>
+        <AppButton disabled={!connectionReady} icon="shield-alert" onPress={() => navigation.navigate('Diagnostics')} tone="secondary">Códigos de falha</AppButton>
+        <AppButton icon="chart" onPress={() => navigation.navigate('History')} tone="secondary">Historico e voltas</AppButton>
+        <AppButton disabled={!connectionReady} icon="bug" onPress={() => navigation.navigate('Debug')} tone="secondary">Debug</AppButton>
       </Panel>
     </Screen>
   );

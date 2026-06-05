@@ -5,7 +5,7 @@ import type { DtcCode, ObdReading, VehicleFingerprint } from '../types/domain';
 import { BluetoothConnection, normalizeElmResponse, sendElmCommand } from './bluetoothService';
 
 const initCommands = ['ATZ', 'ATE0', 'ATL0', 'ATS0', 'ATH0', 'ATSP0'];
-const commandGapMs = 95;
+const commandGapMs = 10;
 
 export class ObdService {
   constructor(
@@ -58,8 +58,8 @@ export class ObdService {
   }
 
   async readRealtimeFrame(frameIndex: number, onReading?: (reading: ObdReading) => void): Promise<ObdReading[]> {
-    const pids = frameIndex % 6 === 0 ? [...realtimeFastPids, ...realtimeSlowPids] : realtimeFastPids;
-    return this.readPidGroup(pids, onReading, 1800);
+    const pids = frameIndex < 1 || frameIndex % 8 === 0 ? [...realtimeFastPids, ...realtimeSlowPids] : realtimeFastPids;
+    return this.readPidGroup(pids, onReading, 900);
   }
 
   private async readPidGroup(pids: ObdPid[], onReading: ((reading: ObdReading) => void) | undefined, timeoutMs: number) {
@@ -67,11 +67,11 @@ export class ObdService {
     let canErrorStreak = 0;
 
     for (const pid of pids) {
-      const raw = await this.sendCommand(pid.pid, timeoutMs, { idleMs: 180, pollMs: 45 });
+      const raw = await this.sendCommand(pid.pid, timeoutMs, { idleMs: 35, pollMs: 15 });
 
       if (/CAN ERROR|BUS ERROR|BUFFER FULL/i.test(raw)) {
         canErrorStreak += 1;
-        await delay(canErrorStreak > 1 ? 420 : 220);
+        await delay(canErrorStreak > 1 ? 260 : 120);
         continue;
       }
 

@@ -37,11 +37,15 @@
 - `app/src/screens/LoginScreen.tsx`: entrada, modo teste e preparo das permissoes.
 - `app/src/screens/BluetoothScreen.tsx`: busca dispositivos proximos, pareia, lista pareados, salva ultimo scanner funcional e valida conexao.
 - `app/src/screens/HomeScreen.tsx`: menu principal bloqueado ate conexao OBD2 validada.
-- `app/src/screens/DashboardScreen.tsx`: realtime sem intervalo fixo, leitura manual, identificacao do veiculo, imagem temporaria do carro por busca Bing, cards/graficos e log OBD2.
+- `app/src/screens/DashboardScreen.tsx`: realtime sem intervalo fixo, identificacao do veiculo, gravacao nomeada de percurso, imagem temporaria do carro por busca Bing, cards/graficos e log OBD2.
+- `app/src/screens/TripMapScreen.tsx`: mapa tecnico em SVG da gravacao, com cor por metrica e pontos criticos.
+- `app/src/screens/TripCompareScreen.tsx`: comparacao manual entre duas gravacoes completas recentes, com metricas, confianca, resumo e estimativa.
 - `app/src/screens/DiagnosticsScreen.tsx`: leitura e limpeza de DTCs.
 - `app/src/screens/DebugScreen.tsx`: estado tecnico do app, adaptador, leituras, DTCs e log.
 - `app/src/services/bluetoothService.ts`: permissoes, descoberta, pareamento, lista de pareados, conexao compartilhada, estrategias Bluetooth e mensagens de erro.
 - `app/src/services/obdService.ts`: comandos AT/OBD2, leitura realtime, snapshot bruto, VIN/fingerprint e DTCs.
+- `app/src/services/localTripRepository.ts`: persistencia local de gravacoes, resumos arquivados, exportacao JSON e metadados.
+- `app/src/lib/tripComparison.ts`: calculo offline das metricas de comparacao, confianca, principais diferencas, resumo por regra e estimativa.
 - `app/src/services/scanRepository.ts`: persistencia Supabase quando nuvem estiver ativa.
 - `app/src/components/ConnectionGauge.tsx`: animacao de conexao/leitura.
 - `supabase/migrations/`: migrations do banco.
@@ -87,6 +91,10 @@
 - O ultimo adaptador que funcionou fica salvo localmente para conexao rapida.
 - Dashboard e DTC usam a conexao compartilhada para evitar reconectar e fechar socket a cada leitura.
 - Realtime do Dashboard nao deve usar intervalo fixo visivel; atualizar cada sensor assim que a ECU responder.
+- Ao iniciar gravacao de percurso, pedir nome obrigatorio e observacao opcional; esses dados alimentam historico, mapa, exportacao e comparacao.
+- Durante gravacao de percurso, Dashboard entra em modo performance e reduz animacoes/sombras; fora da gravacao o visual completo continua liberado.
+- Historico local guarda ate 12 gravacoes completas recentes e ate 180 resumos leves arquivados.
+- Comparacao de gravacoes e manual no MVP; nao usar IA nem tentar casar trechos por GPS automaticamente ainda.
 - Se o relatorio mostrar `CAN ERROR` em sequencia, o realtime esta agressivo demais; manter pausa curta entre comandos e desacelerar ao detectar erro de barramento.
 - Relatorio deve manter respostas OBD2 brutas, logs de TX/RX e eventos para diagnostico.
 - Erros nativos como `read failed`, `socket might closed`, `timeout`, `BLUETOOTH_CONNECT` devem ser traduzidos para portugues antes de aparecer para o usuario.

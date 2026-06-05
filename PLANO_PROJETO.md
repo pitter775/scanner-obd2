@@ -480,6 +480,8 @@ Pagamento pode ser analisado depois com Mercado Pago, Stripe ou assinatura pela 
 - [x] Melhorar UI depois de testar no celular.
 - [x] Redesenhar visual premium preto/neon, limpo e animado.
 - [x] Criar dashboard com graficos animados para leitura em tempo real.
+- [x] Remover obrigatoriedade de placa do cadastro rapido de veiculo.
+- [x] Criar historico local de voltas com pontos OBD2/GPS, mapa simples e exportacao JSON pelo app.
 - [ ] Criar filtro guiado de veiculo: marca -> modelo -> ano/versao.
 - [ ] Usar VIN via OBD2 para pular filtro manual quando disponivel.
 - [ ] Buscar foto do veiculo dinamicamente via Google Images/Bing Images/API equivalente, sem persistir no banco.
@@ -509,7 +511,7 @@ Pagamento pode ser analisado depois com Mercado Pago, Stripe ou assinatura pela 
 - Sincronizacao em nuvem desativada neste APK de teste para evitar erros de sessao Supabase durante validacao do carro.
 - Permissoes Bluetooth Android solicitadas na entrada do app antes de listar/conectar no SP359.
 - Ford Focus 2006 definido automaticamente como veiculo local padrao para evitar bloqueio no Dashboard durante o primeiro teste.
-- Fluxo ajustado para passar primeiro pela tela Bluetooth: o SP359 precisa responder ao handshake antes de liberar Dashboard/DTC/Veiculos/Debug.
+- Fluxo ajustado para passar primeiro pela tela Bluetooth: o SP359 precisa responder ao handshake antes de liberar Dashboard/DTC/Debug.
 - Dashboard e DTC usam a conexao Bluetooth compartilhada ja validada, sem reconectar e derrubar o socket a cada leitura.
 - Erros brutos de Java/Bluetooth agora sao traduzidos para mensagens em portugues dentro da tela.
 - Loader de conexao redesenhado para validacao do SP359, conexao e leitura.
@@ -538,11 +540,31 @@ Pagamento pode ser analisado depois com Mercado Pago, Stripe ou assinatura pela 
 - Dashboard ganhou gauge dedicado para RPM, aviso para ligar o carro, hero menor em modo compacto e menu inferior sem Inicio.
 - Realtime recebeu intervalo curto entre comandos e backoff ao detectar `CAN ERROR`, evitando martelar o ELM/ECU.
 - Controles do Dashboard foram compactados em uma faixa sem titulo/borda pesada, com botoes lado a lado e sem botoes manuais de VIN/opcoes.
+- Cadastro rapido do veiculo no Dashboard nao usa mais placa; o botao Salvar agora depende apenas do salvamento do veiculo, nao da leitura realtime.
+- Historico local de voltas criado no aparelho: Dashboard grava pontos OBD2/GPS, History lista e exporta JSON, TripMap desenha o trajeto em SVG sem depender de mapa online.
+- Realtime do Dashboard otimizado apos teste real: reduziu logs RAW por comando, encurtou gap/poll, atualiza PIDs rapidos com prioridade e coleta sensores lentos com menor frequencia.
+- Tela de percurso evoluiu para mapa visual por metrica: velocidade, RPM, temperatura, carga, MAP, borboleta e esforco estimado do motor, com resumo e pontos criticos.
+- Historico local passou a manter resumos arquivados controlados: guarda ate 12 voltas completas recentes e ate 180 resumos leves para uso longo sem inflar demais o armazenamento.
+- Dashboard entra em modo performance automaticamente durante gravacao de percurso: corta animacao de valor, glow de barra, segmentos e sombras pesadas, mantendo visual completo fora da gravacao.
+- Comparacao manual de gravacoes adicionada: nome/observacao obrigatorios no inicio da gravacao, tela para escolher Base/Antes e Comparativa/Depois, metricas, diferencas relevantes, confianca, resumo por regra e estimativa com aviso de dinamometro.
 - VIN/fingerprint passa a ser tentado automaticamente ao iniciar leitura/realtime.
 - Tela Bluetooth agora tenta conectar automaticamente apos parear dispositivo novo.
 - Header nativo foi ocultado para ganhar altura util na tela.
-- Menu inferior ficou apenas com textos pequenos, sem iniciais/icones.
+- Menu inferior agora usa icones Lucide e removeu a entrada `Carro`; selecao/cadastro do veiculo abre em modal ao tocar no hero do Dashboard.
 - Busca da imagem do carro inclui `brasileiro` para reduzir resultados europeus.
+- Dashboard ficou sempre em realtime quando ha adaptador conectado, sem botoes manuais `Ler`, `Realtime` e `Expandir`.
+- Gauge de RPM foi redesenhado como arco de velocimetro, sem barra horizontal cruzando o mostrador.
+- Quando o veiculo ainda nao foi identificado/cadastrado, o hero do Dashboard fica sem imagem.
+- Tela Bluetooth removeu a sessao separada de adaptador ativo; quando ja existe conexao validada, a area principal muda para `Scanner conectado`.
+- Menu inferior teve labels ajustados para portugues com acentos, foi movido para fora das telas para nao acompanhar a transicao, e a linha superior verde foi removida.
+- Dashboard nao exibe loader de conexao; a tela e bloqueada via navegacao quando nao ha conexao validada.
+- Realtime voltou a priorizar atualizacao rapida e mais PIDs aparecem no Dashboard; erros apos leituras existentes nao substituem dados bons por aviso de falha.
+- Cards de sensores passaram a usar icones Lucide no canto superior direito, sem textos grandes como `%`, `kPa` ou `km/h`.
+- Produto renomeado para `InfraScan OBD`, com assinatura visual `by InfraStudio`, scheme `infrascanobd` e package Android `com.infrastudio.infrascanobd`.
+- Logo e icone oficiais adicionados em `app/assets/brand/`; assets nativos `icon.png`, adaptive icon, monochrome, favicon e splash foram regenerados a partir deles.
+- Dashboard manteve o modo mock OBD2: login `pitter` / `494601` pula Bluetooth, abre direto no Dashboard e gera leituras simuladas variando em tempo real.
+- Cards do Dashboard ganharam cor funcional por estado (`normal`, `atencao`, `critico`, `frio`) e icones mais contextuais por sensor.
+- RPM principal ficou como conta-giros com arco e zonas verde/amarela/vermelha, evitando visual de relogio.
 - APK release local gerado em `C:\Projetos\scanner-obd2-mobile\scanner-obd2-release.apk`; APK debug antigo removido.
 - Node portatil `v20.20.2` e Android SDK local instalados em `.tools/` para viabilizar build local.
 - Documentacao criada em `README.md`, `supabase/README.md`, `docs/architecture.md`, `docs/roadmap.md` e `docs/obd2/elm327.md`.

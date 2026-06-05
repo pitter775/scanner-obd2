@@ -23,7 +23,7 @@ export const obdPids: ObdPid[] = [
   {
     pid: '0105',
     name: 'Temperatura do motor',
-    unit: 'C',
+    unit: '°C',
     decode: ([a = 0]) => a - 40,
   },
   {
@@ -41,18 +41,18 @@ export const obdPids: ObdPid[] = [
   {
     pid: '010F',
     name: 'Temperatura do ar',
-    unit: 'C',
+    unit: '°C',
     decode: ([a = 0]) => a - 40,
   },
   {
     pid: '010B',
-    name: 'Pressao coletor',
+    name: 'Pressão coletor',
     unit: 'kPa',
     decode: ([a = 0]) => a,
   },
   {
     pid: '0142',
-    name: 'Tensao modulo',
+    name: 'Tensão módulo',
     unit: 'V',
     decode: ([a = 0, b = 0]) => ((a * 256) + b) / 1000,
   },
@@ -88,26 +88,26 @@ export const obdPids: ObdPid[] = [
   },
   {
     pid: '0133',
-    name: 'Pressao barometrica',
+    name: 'Pressão barométrica',
     unit: 'kPa',
     decode: ([a = 0]) => a,
   },
   {
     pid: '013C',
     name: 'Temperatura catalisador B1S1',
-    unit: 'C',
+    unit: '°C',
     decode: ([a = 0, b = 0]) => (((a * 256) + b) / 10) - 40,
   },
   {
     pid: '013E',
     name: 'Temperatura catalisador B1S2',
-    unit: 'C',
+    unit: '°C',
     decode: ([a = 0, b = 0]) => (((a * 256) + b) / 10) - 40,
   },
 ];
 
 export const realtimeFastPidIds = ['010C', '010D', '0104', '0111'];
-export const realtimeSlowPidIds = ['0105', '010F', '010B', '0142'];
+export const realtimeSlowPidIds = ['0105', '010B', '010F', '0142'];
 export const realtimeFastPids = obdPids.filter((pid) => realtimeFastPidIds.includes(pid.pid));
 export const realtimeSlowPids = obdPids.filter((pid) => realtimeSlowPidIds.includes(pid.pid));
 

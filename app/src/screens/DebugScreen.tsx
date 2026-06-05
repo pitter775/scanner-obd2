@@ -22,15 +22,15 @@ export function DebugScreen() {
   return (
     <Screen>
       <Panel title="Ambiente">
-        <Info label="Supabase" value={isSupabaseConfigured ? 'configurado' : 'nao configurado'} />
+        <Info label="Supabase" value={isSupabaseConfigured ? 'configurado' : 'não configurado'} />
         <Info label="Nuvem" value={isCloudSyncEnabled ? 'ativa' : 'desativada para teste'} />
         <Info label="Build" value="release/local" />
       </Panel>
 
       <Panel title="Estado atual">
-        <Info label="Veiculo" value={activeVehicle ? `${activeVehicle.make} ${activeVehicle.model} ${activeVehicle.year}` : 'nenhum'} />
+        <Info label="Veículo" value={activeVehicle ? `${activeVehicle.make} ${activeVehicle.model} ${activeVehicle.year}` : 'nenhum'} />
         <Info label="Adaptador" value={activeAdapter ? `${activeAdapter.name} (${activeAdapter.address})` : 'nenhum'} />
-        <Info label="Conexao OBD2" value={connectionReady ? 'validada' : 'nao validada'} />
+        <Info label="Conexão OBD2" value={connectionReady ? 'validada' : 'não validada'} />
         <Info label="Leituras" value={String(readings.length)} />
         <Info label="DTCs" value={String(dtcs.length)} />
         <Info label="Linhas de log" value={String(communicationLog.length)} />
@@ -38,16 +38,16 @@ export function DebugScreen() {
       </Panel>
 
       <Panel subtitle="Use depois dos testes para enviar tudo que aconteceu no app." title="Relatorio de teste">
-        <AppButton onPress={shareDiagnosticReport}>Compartilhar relatorio</AppButton>
-        <AppButton onPress={clearDiagnosticEvents} tone="secondary">Limpar erros/avisos</AppButton>
+        <AppButton icon="send" onPress={shareDiagnosticReport}>Compartilhar relatório</AppButton>
+        <AppButton icon="wrench" onPress={clearDiagnosticEvents} tone="secondary">Limpar erros/avisos</AppButton>
       </Panel>
 
       {fingerprint ? (
         <Panel title="Fingerprint">
-          <Info label="VIN" value={fingerprint.vin ?? 'nao retornou'} />
-          <Info label="Protocolo" value={fingerprint.protocol ?? 'nao retornou'} />
-          <Info label="Confianca" value={fingerprint.confidence} />
-          <Info label="Marca provavel" value={fingerprint.likelyMake ?? 'nao identificada'} />
+          <Info label="VIN" value={fingerprint.vin ?? 'não retornou'} />
+          <Info label="Protocolo" value={fingerprint.protocol ?? 'não retornou'} />
+          <Info label="Confiança" value={fingerprint.confidence} />
+          <Info label="Marca provável" value={fingerprint.likelyMake ?? 'não identificada'} />
         </Panel>
       ) : null}
 

@@ -1,18 +1,23 @@
 {
   "expo": {
-    "name": "Scanner OBD2",
-    "slug": "scanner-obd2-mobile",
+    "name": "InfraScan OBD",
+    "slug": "infrascan-obd",
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#06121f"
+    },
     "newArchEnabled": false,
     "userInterfaceStyle": "dark",
-    "scheme": "scannerobd2",
+    "scheme": "infrascanobd",
     "ios": {
       "supportsTablet": true
     },
     "android": {
-      "package": "com.scannerobd2.mobile",
+      "package": "com.infrastudio.infrascanobd",
       "permissions": [
         "BLUETOOTH",
         "BLUETOOTH_ADMIN",
@@ -21,7 +26,7 @@
         "ACCESS_FINE_LOCATION"
       ],
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#06121f",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -32,7 +37,13 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-dev-client"
+      "expo-dev-client",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Permitir que o InfraScan registre o trajeto da volta junto com as leituras OBD2."
+        }
+      ]
     ]
   }
 }

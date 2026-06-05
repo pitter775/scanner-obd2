@@ -41,6 +41,54 @@ export type ScanSessionSummary = ScanSession & {
   }>;
 };
 
+export type LocalTripPoint = {
+  id: string;
+  at: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  speedKph?: number | null;
+  rpm?: number | null;
+  coolantTempC?: number | null;
+  throttlePercent?: number | null;
+  engineLoadPercent?: number | null;
+  manifoldPressureKpa?: number | null;
+  moduleVoltage?: number | null;
+  engineEffort?: number | null;
+  rawReadings: ObdReading[];
+};
+
+export type LocalTrip = {
+  id: string;
+  name: string;
+  notes?: string | null;
+  vehicle?: Pick<Vehicle, 'id' | 'make' | 'model' | 'year' | 'engine' | 'vin'> | null;
+  adapterName?: string | null;
+  adapterAddress?: string | null;
+  startedAt: string;
+  endedAt?: string | null;
+  points: LocalTripPoint[];
+};
+
+export type LocalTripSummary = {
+  id: string;
+  name: string;
+  notes?: string | null;
+  vehicle?: LocalTrip['vehicle'];
+  adapterName?: string | null;
+  startedAt: string;
+  endedAt?: string | null;
+  pointCount: number;
+  gpsPointCount: number;
+  maxSpeedKph?: number | null;
+  maxRpm?: number | null;
+  maxCoolantTempC?: number | null;
+  maxEngineLoadPercent?: number | null;
+  maxManifoldPressureKpa?: number | null;
+  maxThrottlePercent?: number | null;
+  maxEngineEffort?: number | null;
+  fullTripAvailable: boolean;
+};
+
 export type ObdReading = {
   pid: string;
   name: string;

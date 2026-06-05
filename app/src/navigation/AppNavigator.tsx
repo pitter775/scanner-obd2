@@ -1,5 +1,6 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import { brand } from '../config/brand';
 import { colors } from '../config/theme';
 import { AccountScreen } from '../screens/AccountScreen';
 import { BluetoothScreen } from '../screens/BluetoothScreen';
@@ -9,7 +10,8 @@ import { DiagnosticsScreen } from '../screens/DiagnosticsScreen';
 import { HistoryScreen } from '../screens/HistoryScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { LoginScreen } from '../screens/LoginScreen';
-import { VehiclesScreen } from '../screens/VehiclesScreen';
+import { TripCompareScreen } from '../screens/TripCompareScreen';
+import { TripMapScreen } from '../screens/TripMapScreen';
 import type { RootStackParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -28,12 +30,13 @@ export function AppNavigator() {
       }}
     >
       <Stack.Screen component={LoginScreen} name="Login" options={{ title: 'Entrar' }} />
-      <Stack.Screen component={HomeScreen} name="Home" options={{ title: 'Scanner OBD2' }} />
-      <Stack.Screen component={VehiclesScreen} name="Vehicles" options={{ title: 'Veiculos' }} />
+      <Stack.Screen component={HomeScreen} name="Home" options={{ title: brand.appName }} />
       <Stack.Screen component={BluetoothScreen} name="Bluetooth" options={{ title: 'Bluetooth' }} />
       <Stack.Screen component={DashboardScreen} name="Dashboard" options={{ title: 'Dashboard' }} />
       <Stack.Screen component={DiagnosticsScreen} name="Diagnostics" options={{ title: 'Falhas DTC' }} />
       <Stack.Screen component={HistoryScreen} name="History" options={{ title: 'Historico' }} />
+      <Stack.Screen component={TripMapScreen} name="TripMap" options={{ title: 'Mapa da volta' }} />
+      <Stack.Screen component={TripCompareScreen} name="TripCompare" options={{ title: 'Comparar gravacoes' }} />
       <Stack.Screen component={DebugScreen} name="Debug" options={{ title: 'Debug' }} />
       <Stack.Screen component={AccountScreen} name="Account" options={{ title: 'Conta' }} />
     </Stack.Navigator>
