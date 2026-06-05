@@ -35,7 +35,6 @@ export function Screen({ children, scroll = true }: ScreenProps) {
 
 function BottomNav({ activeRoute, navigate }: { activeRoute: string; navigate: (name: string) => void }) {
   const items = [
-    ['Home', 'H', 'Inicio'],
     ['Bluetooth', 'B', 'BT'],
     ['Dashboard', 'D', 'Dash'],
     ['Diagnostics', '!', 'DTC'],
@@ -47,7 +46,7 @@ function BottomNav({ activeRoute, navigate }: { activeRoute: string; navigate: (
     <View style={styles.bottomNav}>
       {items.map(([name, icon, label]) => (
         <View key={name} style={styles.navItem}>
-          <AppButton icon={icon} onPress={() => navigate(name)} tone={activeRoute === name ? 'primary' : 'secondary'}>
+          <AppButton compact icon={icon} onPress={() => navigate(name)} tone={activeRoute === name ? 'primary' : 'secondary'}>
             {label}
           </AppButton>
         </View>
@@ -75,7 +74,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 6,
     left: 0,
-    padding: spacing.sm,
+    padding: spacing.xs,
     position: 'absolute',
     right: 0,
   },

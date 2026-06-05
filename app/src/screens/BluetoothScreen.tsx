@@ -104,7 +104,7 @@ export function BluetoothScreen({ navigation }: Props) {
       setLastAdapter(device);
       await AsyncStorage.setItem('last-obd-adapter', JSON.stringify(device));
       setStatus(`${device.name} conectado. Resposta: ${response.slice(0, 40)}`);
-      navigation.replace('Home');
+      navigation.replace('Dashboard');
     } catch (error) {
       appendConsole(`Falha final: ${errorMessage(error)}`);
       recordDiagnosticEvent('error', `Falha ao validar adaptador ${device.name}`, error);

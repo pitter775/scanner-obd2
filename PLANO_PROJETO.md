@@ -533,6 +533,9 @@ Pagamento pode ser analisado depois com Mercado Pago, Stripe ou assinatura pela 
 - Layout do Dashboard adaptado para Android/tablet de carro na horizontal, com hero e controles lado a lado e mais cards por linha.
 - App liberado para orientacao retrato/paisagem no `app.json`.
 - Parser de VIN/chassi validado localmente contra a resposta real capturada `0902`, retornando `8AFFZZFHA7J004684`.
+- Realtime ajustado para priorizar PIDs rapidos: RPM, velocidade, carga e borboleta passam a atualizar em ciclo curto; sensores lentos entram em ciclos alternados.
+- Animacoes continuas foram removidas de botoes/cards; agora ficam estaticas ou disparam apenas em press/leitura, reduzindo custo no Dashboard.
+- Dashboard ganhou gauge dedicado para RPM, aviso para ligar o carro, hero menor em modo compacto e menu inferior sem Inicio.
 - APK release local gerado em `C:\Projetos\scanner-obd2-mobile\scanner-obd2-release.apk`; APK debug antigo removido.
 - Node portatil `v20.20.2` e Android SDK local instalados em `.tools/` para viabilizar build local.
 - Documentacao criada em `README.md`, `supabase/README.md`, `docs/architecture.md`, `docs/roadmap.md` e `docs/obd2/elm327.md`.

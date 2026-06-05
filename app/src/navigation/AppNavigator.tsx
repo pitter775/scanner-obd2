@@ -22,7 +22,8 @@ export function AppNavigator() {
         contentStyle: { backgroundColor: colors.background },
         headerStyle: { backgroundColor: colors.background },
         headerTintColor: colors.text,
-        headerTitleStyle: { fontWeight: '800' },
+        headerTitleStyle: { fontSize: 16, fontWeight: '800' },
+        headerShadowVisible: false,
       }}
     >
       <Stack.Screen component={LoginScreen} name="Login" options={{ title: 'Entrar' }} />

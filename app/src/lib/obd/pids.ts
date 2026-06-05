@@ -106,6 +106,11 @@ export const obdPids: ObdPid[] = [
   },
 ];
 
+export const realtimeFastPidIds = ['010C', '010D', '0104', '0111'];
+export const realtimeSlowPidIds = ['0105', '010F', '010B', '0142'];
+export const realtimeFastPids = obdPids.filter((pid) => realtimeFastPidIds.includes(pid.pid));
+export const realtimeSlowPids = obdPids.filter((pid) => realtimeSlowPidIds.includes(pid.pid));
+
 export function getPid(pid: string) {
   return obdPids.find((item) => item.pid === pid);
 }

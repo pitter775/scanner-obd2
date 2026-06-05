@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import type { PropsWithChildren } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, spacing } from '../config/theme';
 
@@ -9,44 +9,11 @@ type AppButtonProps = PropsWithChildren<{
   icon?: string;
   tone?: 'primary' | 'secondary' | 'danger';
   disabled?: boolean;
+  compact?: boolean;
 }>;
 
-export function AppButton({ children, icon, onPress, tone = 'primary', disabled }: AppButtonProps) {
+export function AppButton({ children, compact, icon, onPress, tone = 'primary', disabled }: AppButtonProps) {
   const pressScale = useRef(new Animated.Value(1)).current;
-  const glow = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (disabled) {
-      glow.stopAnimation();
-      glow.setValue(0);
-      return;
-    }
-
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(glow, {
-          duration: tone === 'primary' ? 900 : 1300,
-          easing: Easing.inOut(Easing.quad),
-          toValue: 1,
-          useNativeDriver: true,
-        }),
-        Animated.timing(glow, {
-          duration: tone === 'primary' ? 900 : 1300,
-          easing: Easing.inOut(Easing.quad),
-          toValue: 0,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-
-    loop.start();
-    return () => loop.stop();
-  }, [disabled, glow, tone]);
-
-  const glowOpacity = glow.interpolate({
-    inputRange: [0, 1],
-    outputRange: tone === 'primary' ? [0.18, 0.65] : [0.08, 0.35],
-  });
   const glowStyle = tone === 'danger' ? styles.dangerGlow : tone === 'secondary' ? styles.secondaryGlow : styles.primaryGlow;
 
   function animatePress(toValue: number) {
@@ -67,14 +34,15 @@ export function AppButton({ children, icon, onPress, tone = 'primary', disabled 
         onPressOut={() => !disabled && animatePress(1)}
         style={[
         styles.button,
+        compact && styles.compact,
         styles[tone],
         disabled && styles.disabled,
       ]}
       >
-        <Animated.View pointerEvents="none" style={[styles.glow, glowStyle, { opacity: glowOpacity }]} />
+        <View pointerEvents="none" style={[styles.glow, glowStyle, tone === 'primary' ? styles.glowPrimary : styles.glowSecondary]} />
         <View style={styles.content}>
-          {icon ? <Text adjustsFontSizeToFit numberOfLines={1} style={styles.icon}>{icon}</Text> : null}
-          <Text adjustsFontSizeToFit numberOfLines={1} style={styles.label}>{children}</Text>
+          {icon ? <Text adjustsFontSizeToFit numberOfLines={1} style={[styles.icon, compact && styles.compactIcon]}>{icon}</Text> : null}
+          <Text adjustsFontSizeToFit numberOfLines={1} style={[styles.label, compact && styles.compactLabel]}>{children}</Text>
         </View>
       </Pressable>
     </Animated.View>
@@ -121,6 +89,16 @@ const styles = StyleSheet.create({
   dangerGlow: {
     backgroundColor: colors.danger,
   },
+  compact: {
+    minHeight: 38,
+    paddingHorizontal: spacing.xs,
+  },
+  compactIcon: {
+    fontSize: 11,
+  },
+  compactLabel: {
+    fontSize: 10,
+  },
   content: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -134,10 +112,17 @@ const styles = StyleSheet.create({
   glow: {
     height: 80,
     left: -24,
+    opacity: 0.25,
     position: 'absolute',
     top: -16,
     transform: [{ rotate: '-14deg' }],
     width: 96,
+  },
+  glowPrimary: {
+    opacity: 0.42,
+  },
+  glowSecondary: {
+    opacity: 0.16,
   },
   icon: {
     color: colors.white,

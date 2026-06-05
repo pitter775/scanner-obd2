@@ -214,6 +214,8 @@ export async function testAdapterHandshake(address: string, onProgress?: Connect
 }
 
 type ElmCommandOptions = {
+  idleMs?: number;
+  pollMs?: number;
   settleMs?: number;
   timeoutMs?: number;
 };
@@ -227,10 +229,13 @@ export async function sendElmCommand(connection: BluetoothConnection, command: s
     await delay(options.settleMs);
   }
 
-  return readElmResponse(connection, options.timeoutMs ?? 4000);
+  return readElmResponse(connection, options);
 }
 
-async function readElmResponse(connection: BluetoothConnection, timeoutMs: number) {
+async function readElmResponse(connection: BluetoothConnection, options: ElmCommandOptions) {
+  const timeoutMs = options.timeoutMs ?? 4000;
+  const idleMs = options.idleMs ?? 450;
+  const pollMs = options.pollMs ?? 120;
   const startedAt = Date.now();
   let response = '';
   let lastError: unknown;
@@ -261,11 +266,11 @@ async function readElmResponse(connection: BluetoothConnection, timeoutMs: numbe
       lastError = error;
     }
 
-    if (response.trim() && lastDataAt && Date.now() - lastDataAt > 450) {
+    if (response.trim() && lastDataAt && Date.now() - lastDataAt > idleMs) {
       return response;
     }
 
-    await delay(120);
+    await delay(pollMs);
   }
 
   if (response.trim()) {

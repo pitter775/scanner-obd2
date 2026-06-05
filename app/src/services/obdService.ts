@@ -1,6 +1,6 @@
 import { parseDtcResponse } from '../lib/obd/dtc';
 import { buildFingerprint } from '../lib/obd/fingerprint';
-import { obdPids, parsePidResponse } from '../lib/obd/pids';
+import { obdPids, parsePidResponse, realtimeFastPids, realtimeSlowPids, type ObdPid } from '../lib/obd/pids';
 import type { DtcCode, ObdReading, VehicleFingerprint } from '../types/domain';
 import { BluetoothConnection, normalizeElmResponse, sendElmCommand } from './bluetoothService';
 
@@ -41,10 +41,19 @@ export class ObdService {
   }
 
   async readLiveData(onReading?: (reading: ObdReading) => void): Promise<ObdReading[]> {
+    return this.readPidGroup(obdPids, onReading, 2600);
+  }
+
+  async readRealtimeFrame(frameIndex: number, onReading?: (reading: ObdReading) => void): Promise<ObdReading[]> {
+    const pids = frameIndex % 4 === 0 ? [...realtimeFastPids, ...realtimeSlowPids] : realtimeFastPids;
+    return this.readPidGroup(pids, onReading, 1400);
+  }
+
+  private async readPidGroup(pids: ObdPid[], onReading: ((reading: ObdReading) => void) | undefined, timeoutMs: number) {
     const readings: ObdReading[] = [];
 
-    for (const pid of obdPids) {
-      const raw = await this.sendCommand(pid.pid);
+    for (const pid of pids) {
+      const raw = await this.sendCommand(pid.pid, timeoutMs, { idleMs: 120, pollMs: 35 });
       const parsed = parsePidResponse(pid.pid, raw);
 
       if (parsed) {
@@ -83,9 +92,9 @@ export class ObdService {
     return this.sendCommand('04');
   }
 
-  private async sendCommand(command: string, timeoutMs = 6000) {
+  private async sendCommand(command: string, timeoutMs = 6000, options: { idleMs?: number; pollMs?: number } = {}) {
     this.onLog?.(`> ${command}`);
-    const response = normalizeElmResponse(await sendElmCommand(this.connection, command, { timeoutMs }));
+    const response = normalizeElmResponse(await sendElmCommand(this.connection, command, { ...options, timeoutMs }));
     this.onLog?.(`< ${response || 'sem resposta'}`);
     return response;
   }

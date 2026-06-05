@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Animated, Image, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { AppButton } from '../components/AppButton';
 import { ConnectionGauge } from '../components/ConnectionGauge';
@@ -34,6 +34,7 @@ export function DashboardScreen() {
   const [statusMessage, setStatusMessage] = useState('');
   const [liveRunning, setLiveRunning] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
+  const [controlsExpanded, setControlsExpanded] = useState(false);
   const liveConnectionRef = useRef<BluetoothConnection | null>(null);
   const liveSessionIdRef = useRef<string | null>(null);
   const liveRunningRef = useRef(false);
@@ -129,8 +130,9 @@ export function DashboardScreen() {
     try {
       const connection = await getSharedConnection(activeAdapter.address);
       liveConnectionRef.current = connection;
-      const obd = new ObdService(connection, appendCommunicationLog);
+      const obd = new ObdService(connection);
       await obd.initialize();
+      appendCommunicationLog('Realtime iniciado: log bruto completo fica no relatorio/debug.');
 
       if (isCloudSyncEnabled) {
         const session = await createScanSession(vehicle.id, activeAdapter.name, activeAdapter.address);
@@ -141,10 +143,11 @@ export function DashboardScreen() {
       liveFinalStatusRef.current = 'finished';
       setLiveRunning(true);
 
+      let frameIndex = 0;
       while (liveRunningRef.current) {
         setLoadingLabel('Atualizando sensores...');
-        const nextReadings = await obd.readLiveData((reading) => setReadings(upsertReading(useAppStore.getState().readings, reading)));
-        setReadings(nextReadings);
+        const nextReadings = await obd.readRealtimeFrame(frameIndex, (reading) => setReadings(upsertReading(useAppStore.getState().readings, reading)));
+        frameIndex += 1;
 
         if (isCloudSyncEnabled && liveSessionIdRef.current) {
           await saveReadings(liveSessionIdRef.current, nextReadings);
@@ -171,15 +174,19 @@ export function DashboardScreen() {
     setLiveRunning(false);
   }
 
+  const compactControls = !controlsExpanded && (liveRunning || readings.length > 0);
+  const rpmReading = readings.find((reading) => reading.pid === '010C');
+  const regularReadings = readings.filter((reading) => reading.pid !== '010C');
+
   return (
     <Screen>
       <View style={[styles.topLayout, isWide && styles.topLayoutWide]}>
         <View style={isWide ? styles.topColumnWide : undefined}>
-          <VehicleHero vehicle={activeVehicle} />
+          <VehicleHero compact={compactControls} vehicle={activeVehicle} />
         </View>
         <View style={isWide ? styles.topColumnWide : undefined}>
           <Panel title="Leitura em tempo real">
-            <ConnectionGauge active={loading} label={loadingLabel} moduleName={activeAdapter?.name ?? 'OBDII'} />
+            {!compactControls ? <ConnectionGauge active={loading} label={loadingLabel} moduleName={activeAdapter?.name ?? 'OBDII'} /> : null}
             {statusMessage ? <Text style={styles.statusMessage}>{statusMessage}</Text> : null}
             <View style={[styles.actionGrid, isWide && styles.actionGridWide]}>
               <AppButton disabled={loading} icon="*" onPress={startDiagnostic}>Ler agora</AppButton>
@@ -188,18 +195,24 @@ export function DashboardScreen() {
               </AppButton>
               <AppButton disabled={loading} icon="VIN" onPress={identifyVehicle} tone="secondary">Identificar</AppButton>
               <AppButton disabled={loading} icon={showOptions ? '-' : '+'} onPress={() => setShowOptions((value) => !value)} tone="secondary">Opcoes</AppButton>
+              <AppButton disabled={loading} icon={controlsExpanded ? '-' : '+'} onPress={() => setControlsExpanded((value) => !value)} tone="secondary">
+                {controlsExpanded ? 'Reduzir' : 'Expandir'}
+              </AppButton>
             </View>
             {showOptions ? <Text style={styles.muted}>Realtime sem intervalo fixo: cada sensor atualiza assim que a ECU responde. Layout adapta para tablet horizontal.</Text> : null}
+            {!readings.length ? <Text style={styles.engineHint}>Ligue o carro. Alguns sensores so respondem com o motor ligado ou chave em ignicao.</Text> : null}
           </Panel>
         </View>
       </View>
 
-      {fingerprint ? <FingerprintPanel fingerprint={fingerprint} /> : null}
+      {fingerprint ? <FingerprintPanel compact={compactControls} fingerprint={fingerprint} /> : null}
 
       <View style={styles.grid}>
-        {readings.length ? readings.map((reading) => <ReadingCard key={reading.pid} compact={isWide} reading={reading} />) : (
+        {rpmReading ? <RpmGauge compact={isWide} reading={rpmReading} /> : null}
+        {regularReadings.length ? regularReadings.map((reading) => <ReadingCard key={reading.pid} compact={isWide} reading={reading} />) : null}
+        {!readings.length ? (
           <Text style={styles.muted}>Nenhuma leitura realizada nesta sessao.</Text>
-        )}
+        ) : null}
       </View>
 
       {communicationLog.length ? (
@@ -213,46 +226,28 @@ export function DashboardScreen() {
   );
 }
 
-function FingerprintPanel({ fingerprint }: { fingerprint: VehicleFingerprint }) {
+function FingerprintPanel({ compact, fingerprint }: { compact: boolean; fingerprint: VehicleFingerprint }) {
   return (
     <Panel title="Filtro do veiculo">
       <Text style={styles.fingerprintMain}>
         {fingerprint.likelyMake ?? 'Marca nao identificada'}
         {fingerprint.likelyYear ? ` - ${fingerprint.likelyYear}` : ''}
       </Text>
-      <Text style={styles.muted}>Confianca: {confidenceLabel[fingerprint.confidence]}</Text>
-      {fingerprint.vin ? <Text style={styles.muted}>VIN/chassi: {fingerprint.vin}</Text> : null}
-      {fingerprint.protocol ? <Text style={styles.muted}>Protocolo: {fingerprint.protocol}</Text> : null}
-      {fingerprint.calibrationIds.length ? <Text style={styles.muted}>Calibracao: {fingerprint.calibrationIds.join(', ')}</Text> : null}
-      {fingerprint.ecuNames.length ? <Text style={styles.muted}>ECU: {fingerprint.ecuNames.join(', ')}</Text> : null}
+      {compact ? <Text style={styles.muted}>{fingerprint.vin ? `VIN: ${fingerprint.vin}` : `Protocolo: ${fingerprint.protocol ?? 'nao identificado'}`}</Text> : (
+        <>
+          <Text style={styles.muted}>Confianca: {confidenceLabel[fingerprint.confidence]}</Text>
+          {fingerprint.vin ? <Text style={styles.muted}>VIN/chassi: {fingerprint.vin}</Text> : null}
+          {fingerprint.protocol ? <Text style={styles.muted}>Protocolo: {fingerprint.protocol}</Text> : null}
+          {fingerprint.calibrationIds.length ? <Text style={styles.muted}>Calibracao: {fingerprint.calibrationIds.join(', ')}</Text> : null}
+          {fingerprint.ecuNames.length ? <Text style={styles.muted}>ECU: {fingerprint.ecuNames.join(', ')}</Text> : null}
+        </>
+      )}
     </Panel>
   );
 }
 
 function ReadingCard({ compact, reading }: { compact: boolean; reading: ObdReading }) {
-  const pulse = useRef(new Animated.Value(0)).current;
   const valueScale = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          duration: 900,
-          easing: Easing.inOut(Easing.quad),
-          toValue: 1,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          duration: 900,
-          easing: Easing.inOut(Easing.quad),
-          toValue: 0,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [pulse]);
 
   useEffect(() => {
     Animated.sequence([
@@ -271,15 +266,12 @@ function ReadingCard({ compact, reading }: { compact: boolean; reading: ObdReadi
     ]).start();
   }, [reading.value, valueScale]);
 
-  const haloOpacity = pulse.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.08, 0.30],
-  });
   const barWidth = `${readingPercent(reading)}%` as const;
 
   return (
     <Animated.View style={[styles.card, compact ? styles.cardWide : styles.cardPhone]}>
-      <Animated.View pointerEvents="none" style={[styles.cardHalo, { opacity: haloOpacity }]} />
+      <Text pointerEvents="none" style={styles.cardIcon}>{pidIcon(reading.pid)}</Text>
+      <View pointerEvents="none" style={styles.cardHalo} />
       <Text style={styles.cardLabel}>{reading.name}</Text>
       <Animated.Text style={[styles.cardValue, { transform: [{ scale: valueScale }] }]}>{reading.value}</Animated.Text>
       <Text style={styles.cardUnit}>{reading.unit}</Text>
@@ -296,13 +288,53 @@ function ReadingCard({ compact, reading }: { compact: boolean; reading: ObdReadi
   );
 }
 
-function VehicleHero({ vehicle }: { vehicle?: Vehicle }) {
+function RpmGauge({ compact, reading }: { compact: boolean; reading: ObdReading }) {
+  const valueScale = useRef(new Animated.Value(1)).current;
+  const percent = readingPercent(reading);
+  const needleAngle = `${Math.max(-125, Math.min(125, -125 + (percent * 2.5)))}deg`;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.spring(valueScale, {
+        friction: 5,
+        tension: 180,
+        toValue: 1.04,
+        useNativeDriver: true,
+      }),
+      Animated.spring(valueScale, {
+        friction: 6,
+        tension: 130,
+        toValue: 1,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [reading.value, valueScale]);
+
+  return (
+    <Animated.View style={[styles.rpmGauge, compact ? styles.rpmGaugeWide : styles.rpmGaugePhone]}>
+      <Text pointerEvents="none" style={styles.rpmIcon}>RPM</Text>
+      <View style={styles.rpmArc}>
+        <View style={styles.rpmArcInner} />
+        <View style={[styles.rpmNeedle, { transform: [{ rotate: needleAngle }] }]} />
+        <View style={styles.rpmCenter} />
+      </View>
+      <Animated.Text style={[styles.rpmValue, { transform: [{ scale: valueScale }] }]}>{reading.value}</Animated.Text>
+      <Text style={styles.cardUnit}>{reading.unit}</Text>
+      <View style={styles.track}>
+        <View style={[styles.fillGlow, { width: `${percent}%` as const }]} />
+        <View style={[styles.fill, { width: `${percent}%` as const }]} />
+      </View>
+    </Animated.View>
+  );
+}
+
+function VehicleHero({ compact, vehicle }: { compact: boolean; vehicle?: Vehicle }) {
   const title = vehicle ? `${vehicle.make} ${vehicle.model} ${vehicle.year}` : 'Veiculo nao identificado';
-  const query = vehicle ? `${title} car side view` : 'car dashboard obd2 scanner';
+  const query = vehicle ? `${title} Brasil antigo foto lateral` : 'car dashboard obd2 scanner';
   const imageUrl = `https://tse1.mm.bing.net/th?q=${encodeURIComponent(query)}`;
 
   return (
-    <View style={styles.hero}>
+    <View style={[styles.hero, compact && styles.heroCompact]}>
       <Image source={{ uri: imageUrl }} style={styles.heroImage} />
       <View style={styles.heroGlow} />
       <View style={styles.heroOverlay}>
@@ -339,6 +371,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: 80,
     height: 96,
+    opacity: 0.16,
     position: 'absolute',
     right: -38,
     top: -34,
@@ -348,6 +381,15 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 13,
     fontWeight: '800',
+  },
+  cardIcon: {
+    color: colors.primaryGlow,
+    fontSize: 40,
+    fontWeight: '900',
+    opacity: 0.08,
+    position: 'absolute',
+    right: spacing.sm,
+    top: spacing.xs,
   },
   cardPhone: {
     flexBasis: '48%',
@@ -383,6 +425,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -3,
   },
+  engineHint: {
+    backgroundColor: colors.panelSoft,
+    borderColor: colors.warning,
+    borderRadius: 8,
+    borderWidth: 1,
+    color: colors.warning,
+    fontSize: 13,
+    fontWeight: '800',
+    padding: spacing.sm,
+  },
   fingerprintMain: {
     color: colors.text,
     fontSize: 18,
@@ -405,6 +457,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 14,
     elevation: 4,
+  },
+  heroCompact: {
+    aspectRatio: 21 / 9,
   },
   heroGlow: {
     backgroundColor: colors.primary,
@@ -447,6 +502,80 @@ const styles = StyleSheet.create({
   },
   muted: {
     color: colors.muted,
+  },
+  rpmArc: {
+    alignItems: 'center',
+    borderColor: colors.border,
+    borderRadius: 90,
+    borderTopColor: colors.primaryGlow,
+    borderWidth: 10,
+    height: 150,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: spacing.md,
+    top: spacing.md,
+    width: 150,
+  },
+  rpmArcInner: {
+    borderColor: colors.borderStrong,
+    borderRadius: 68,
+    borderWidth: 1,
+    height: 118,
+    opacity: 0.7,
+    position: 'absolute',
+    width: 118,
+  },
+  rpmCenter: {
+    backgroundColor: colors.primaryGlow,
+    borderRadius: 6,
+    height: 12,
+    width: 12,
+  },
+  rpmGauge: {
+    backgroundColor: colors.background,
+    borderColor: colors.primaryGlow,
+    borderRadius: 8,
+    borderWidth: 1,
+    minHeight: 180,
+    overflow: 'hidden',
+    padding: spacing.md,
+    shadowColor: colors.primaryGlow,
+    shadowOffset: { height: 0, width: 0 },
+    shadowOpacity: 0.36,
+    shadowRadius: 16,
+    elevation: 5,
+  },
+  rpmGaugePhone: {
+    flexBasis: '100%',
+  },
+  rpmGaugeWide: {
+    flexBasis: '48.5%',
+  },
+  rpmIcon: {
+    color: colors.primaryGlow,
+    fontSize: 54,
+    fontWeight: '900',
+    opacity: 0.07,
+    position: 'absolute',
+    right: spacing.md,
+    top: spacing.sm,
+  },
+  rpmNeedle: {
+    backgroundColor: colors.danger,
+    borderRadius: 3,
+    height: 6,
+    left: 28,
+    position: 'absolute',
+    width: 64,
+  },
+  rpmValue: {
+    color: colors.text,
+    fontSize: 44,
+    fontWeight: '900',
+    marginTop: spacing.lg,
+    textShadowColor: colors.primaryGlow,
+    textShadowOffset: { height: 0, width: 0 },
+    textShadowRadius: 14,
   },
   segment: {
     backgroundColor: colors.border,
@@ -540,4 +669,25 @@ function readingPercent(reading: ObdReading) {
   };
   const max = maxByPid[reading.pid] ?? 100;
   return Math.max(4, Math.min(100, (reading.value / max) * 100));
+}
+
+function pidIcon(pid: string) {
+  const icons: Record<string, string> = {
+    '0104': '%',
+    '0105': 'C',
+    '010B': 'kPa',
+    '010D': 'km/h',
+    '010F': 'C',
+    '0110': 'MAF',
+    '0111': '%',
+    '011F': 's',
+    '0121': 'km',
+    '0130': '#',
+    '0131': 'km',
+    '0133': 'kPa',
+    '013C': 'C',
+    '013E': 'C',
+    '0142': 'V',
+  };
+  return icons[pid] ?? 'OBD';
 }
